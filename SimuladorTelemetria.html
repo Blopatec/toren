@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador · Plataforma de datos del parque eólico</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f3f3f0; --surface:#fcfcfb; --surface2:#f0efea; --line:#dcdbd5; --line2:#c9c8c1;
+  --text:#0b0b0b; --text2:#52514e; --muted:#85847e;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --ok:#17894a; --warn:#b97a00; --crit:#cf3326; --off:#a3a29c;
+  --z1:#eaf1fb; --z2:#fbefe8; --z3:#e9f6f0; --z4:#f6f0fb; --z5:#fbf5e4;
+  --accent:#2a78d6;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#121211; --surface:#1a1a19; --surface2:#222220; --line:#33332f; --line2:#45453f;
+    --text:#f0efec; --text2:#c3c2b7; --muted:#8f8e86;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#2f9a2f; --s7:#9085e9; --s8:#e66767;
+    --ok:#3dbb74; --warn:#e0a526; --crit:#f0625a; --off:#6b6a64;
+    --z1:#1b2330; --z2:#2a201b; --z3:#18261f; --z4:#241e2c; --z5:#29251a;
+    --accent:#3987e5;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);padding:10px 18px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-.01em}
+header .sub{color:var(--text2);font-size:12px}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap}
+nav.tabs a{padding:6px 12px;border-radius:8px;color:var(--text2);text-decoration:none;font-weight:550;font-size:13px;border:1px solid transparent}
+nav.tabs a.on{background:var(--surface2);color:var(--text);border-color:var(--line)}
+.runbar{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--text2)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line2);background:var(--surface2);color:var(--text);border-radius:7px;padding:5px 10px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+select,input[type=number]{font:inherit;font-size:12px;background:var(--surface);color:var(--text);border:1px solid var(--line2);border-radius:6px;padding:3px 5px}
+input[type=number]{width:74px;text-align:right}
+.simclock{font-variant-numeric:tabular-nums;min-width:90px;text-align:right}
+main{padding:14px 18px 40px}
+.view{display:none}.view.on{display:block}
+.sim{display:grid;grid-template-columns:330px minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:1000px){.sim{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.controls{position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto;padding:10px 12px}
+@media (max-width:1000px){.controls{position:static;max-height:none}}
+.controls h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin:14px 0 6px;font-weight:650}
+.controls h3:first-child{margin-top:2px}
+details.grp{border-top:1px solid var(--line);padding:6px 0}
+details.grp summary{cursor:pointer;font-weight:600;font-size:13px;padding:3px 0;list-style:none;display:flex;justify-content:space-between}
+details.grp summary::after{content:"▸";color:var(--muted)}
+details.grp[open] summary::after{content:"▾"}
+.ctl{margin:8px 0}
+.ctl .lab{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:12.5px;color:var(--text)}
+.ctl .lab span.h{color:var(--muted);cursor:help;font-size:11px;border:1px solid var(--line2);border-radius:50%;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ctl .row{display:flex;gap:8px;align-items:center;margin-top:3px}
+.ctl input[type=range]{flex:1;accent-color:var(--accent)}
+.ctl .unit{font-size:11px;color:var(--muted);min-width:34px}
+.ctl select{width:100%;margin-top:3px}
+.ctl.tog .lab{cursor:pointer}
+.ctl.tog input{accent-color:var(--accent);width:16px;height:16px}
+.help{font-size:11.5px;color:var(--text2);margin-top:2px;display:none}
+.ctl.showhelp .help{display:block}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.btnrow button{font-size:12px}
+.preset{width:100%}
+.presetdesc{font-size:12px;color:var(--text2);margin:4px 0 2px}
+.diagwrap{padding:8px 10px 4px;position:relative}
+.diagwrap svg{width:100%;height:auto;display:block}
+.dtitle{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;padding:2px 4px 6px}
+.dtitle b{font-size:14px}
+.dtitle span{font-size:12px;color:var(--text2)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--text2);padding:4px 6px 6px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.legend .st i{border-radius:2px}
+/* SVG */
+.zone rect{stroke:none}
+.zone text{font-size:11px;font-weight:650;fill:var(--text2);letter-spacing:.03em}
+.node{cursor:pointer}
+.node .nb{fill:var(--surface);stroke:var(--line2);stroke-width:1.2}
+.node:hover .nb{stroke:var(--accent)}
+.node.sel .nb{stroke:var(--accent);stroke-width:2.4}
+.node.warn .nb{stroke:var(--warn);stroke-width:2}
+.node.crit .nb{stroke:var(--crit);stroke-width:2.4}
+.node.off .nb{stroke-dasharray:4 3;fill:var(--surface2)}
+.node.off text{opacity:.55}
+.node.invalid .nb{stroke:var(--crit);stroke-dasharray:5 3;stroke-width:2}
+.node .nl{font-size:11.5px;font-weight:650;fill:var(--text)}
+.node .ns{font-size:9.5px;fill:var(--text2)}
+.node .nv{font-size:10px;fill:var(--text);font-variant-numeric:tabular-nums}
+.node .bbg{fill:var(--surface2)}
+.node .bar{fill:var(--ok)}
+.node.warn .bar{fill:var(--warn)} .node.crit .bar{fill:var(--crit)}
+.node .bdg{font-size:11px;font-weight:700}
+.node.warn .bdg{fill:var(--warn)} .node.crit .bdg,.node.invalid .bdg{fill:var(--crit)}
+.edge{fill:none;stroke:var(--line2);stroke-linecap:round}
+.edge.k-data{stroke:color-mix(in srgb,var(--s1) 45%,var(--line2))}
+.edge.k-log{stroke:color-mix(in srgb,var(--s7) 45%,var(--line2))}
+.edge.k-error{stroke:color-mix(in srgb,var(--s8) 45%,var(--line2))}
+.edge.k-query{stroke:color-mix(in srgb,var(--s3) 45%,var(--line2))}
+.edge.k-repl{stroke:color-mix(in srgb,var(--s4) 50%,var(--line2))}
+.edge.k-doc{stroke:color-mix(in srgb,var(--s2) 45%,var(--line2))}
+.edge.k-image{stroke:color-mix(in srgb,var(--s5) 50%,var(--line2))}
+.edge.k-embed{stroke:color-mix(in srgb,var(--s6) 45%,var(--line2))}
+.edge.idle{opacity:.35;stroke-dasharray:3 4}
+.edge.invalid{stroke:var(--crit);stroke-dasharray:6 4;opacity:.9}
+.edge.off{opacity:.18;stroke-dasharray:2 5}
+.xmark{font-size:16px;font-weight:800;fill:var(--crit)}
+.pt{pointer-events:none}
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px;margin-top:12px}
+.kpi{padding:9px 11px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.kpi .kl{font-size:11.5px;color:var(--text2);display:flex;justify-content:space-between;gap:4px}
+.kpi .kv{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin-top:2px}
+.kpi .ks{font-size:11px;color:var(--text2);margin-top:1px;min-height:15px}
+.chip{font-size:10.5px;font-weight:650;padding:0 6px;border-radius:9px;white-space:nowrap}
+.chip.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 13%,transparent)}
+.chip.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)}
+.chip.crit{color:var(--crit);background:color-mix(in srgb,var(--crit) 14%,transparent)}
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+@media (max-width:760px){.charts{grid-template-columns:1fr}}
+.chart{padding:8px 10px 6px;position:relative}
+.chart .ct{font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.chart .ct span{font-weight:400;color:var(--text2);font-size:11.5px}
+.chart .lg{font-size:11px;color:var(--text2);display:flex;gap:12px;margin:2px 0 0}
+.chart .lg i{display:inline-block;width:12px;height:2px;vertical-align:3px;margin-right:4px;border-radius:2px}
+.chart canvas{width:100%;height:150px;display:block}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line2);border-radius:7px;padding:5px 8px;font-size:11.5px;box-shadow:0 2px 8px rgba(0,0,0,.12);display:none;white-space:nowrap;z-index:5;font-variant-numeric:tabular-nums}
+.bottom{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;margin-top:8px}
+@media (max-width:1200px){.bottom{grid-template-columns:1fr}}
+.bottom .panel{padding:10px 12px;max-height:340px;overflow:auto}
+.bottom h4{margin:0 0 6px;font-size:13px}
+.ins{border-left:3px solid var(--line2);padding:5px 9px;margin:6px 0;font-size:12.5px;background:var(--surface2);border-radius:0 6px 6px 0}
+.ins.ok{border-color:var(--ok)}.ins.warn{border-color:var(--warn)}.ins.crit{border-color:var(--crit)}.ins.info{border-color:var(--accent)}
+.ins b.tag{font-size:11px;margin-right:4px}
+.ins.ok b.tag{color:var(--ok)}.ins.warn b.tag{color:var(--warn)}.ins.crit b.tag{color:var(--crit)}.ins.info b.tag{color:var(--accent)}
+.log div{font-size:12px;padding:3px 0;border-bottom:1px dashed var(--line);display:flex;gap:8px}
+.log time{color:var(--muted);font-variant-numeric:tabular-nums;flex:none;width:58px}
+.log .crit{color:var(--crit)}.log .warn{color:var(--warn)}.log .ok{color:var(--ok)}
+.info h5{margin:0 0 4px;font-size:14px}
+.info p{margin:4px 0;font-size:12.5px;color:var(--text2)}
+.info .fix{border:1px dashed var(--accent);border-radius:8px;padding:6px 8px;margin-top:8px;font-size:12.5px}
+.info .fix b{color:var(--accent)}
+.costs .cr{display:grid;grid-template-columns:120px 1fr 70px;gap:6px;align-items:center;font-size:11.5px;margin:3px 0}
+.costs .cb{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.costs .cb i{display:block;height:100%;background:var(--s1);border-radius:0 4px 4px 0}
+.costs .cr span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.states{display:flex;height:22px;border-radius:6px;overflow:hidden;margin:6px 0 4px;gap:2px;background:var(--surface)}
+.states div{height:100%;min-width:0;transition:flex-grow .3s}
+.stlg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--text2)}
+.stlg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.stlg b{color:var(--text);font-variant-numeric:tabular-nums;font-weight:600}
+/* Guide */
+.guide{max-width:1180px}
+.guide h2{font-size:22px;margin:4px 0 6px;letter-spacing:-.01em}
+.guide .lead{color:var(--text2);max-width:880px;font-size:14.5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0}
+.card{padding:14px 16px}
+.card h3{margin:0 0 4px;font-size:15px}
+.card .tag{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+.card ul{padding-left:18px;margin:8px 0;font-size:13px;color:var(--text2)}
+.card button{margin-top:4px}
+table.fixes{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0 16px}
+table.fixes th,table.fixes td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.fixes th{font-size:11.5px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+.ex{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:10px}
+.ex .card p{font-size:13px;color:var(--text2);margin:6px 0}
+.ex .q{font-size:12.5px;border-left:3px solid var(--accent);padding-left:8px;color:var(--text)}
+.note{font-size:12px;color:var(--text2);margin-top:14px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Simulador de la plataforma de datos del parque eólico</h1>
+    <div class="sub">Tres esquemas GCP corregidos · telemetría ≈10.000 msg/s · modelo didáctico</div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <a href="#guia" data-v="guia">Guía</a>
+    <a href="#telemetria" data-v="telemetria">1 · Telemetría SCADA</a>
+    <a href="#portal" data-v="portal">2 · Portal y eventos</a>
+    <a href="#documentos" data-v="documentos">3 · Documentos, imágenes y RAG</a>
+  </nav>
+  <div class="runbar" id="runbar">
+    <button id="play" class="primary">❚❚ Pausa</button>
+    <label>Velocidad
+      <select id="speed">
+        <option value="1">1× (tiempo real)</option>
+        <option value="10" selected>10×</option>
+        <option value="60">60× (1 min/s)</option>
+        <option value="300">300× (5 min/s)</option>
+      </select>
+    </label>
+    <button id="reset" title="Vuelve a los valores iniciales de esta pestaña">↺ Reiniciar</button>
+    <span class="simclock" id="clock">t = 0 s</span>
+  </div>
+</header>
+<main>
+  <section class="view guide" id="v-guia"></section>
+  <section class="view" id="v-telemetria"></section>
+  <section class="view" id="v-portal"></section>
+  <section class="view" id="v-documentos"></section>
+</main>
+
+<script>
+"use strict";
+/* ============================================================
+   Utilidades
+   ============================================================ */
+const NF = new Intl.NumberFormat('es-CL',{maximumFractionDigits:0});
+const NF1 = new Intl.NumberFormat('es-CL',{maximumFractionDigits:1,minimumFractionDigits:0});
+const NF2 = new Intl.NumberFormat('es-CL',{maximumFractionDigits:2});
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function fN(v){ if(v==null||!isFinite(v)) return '—'; const a=Math.abs(v);
+  if(a>=1e9) return NF1.format(v/1e9)+' G'; if(a>=1e6) return NF1.format(v/1e6)+' M';
+  if(a>=1e4) return NF1.format(v/1e3)+' k'; if(a>=100) return NF.format(v); if(a>=10) return NF1.format(v); if(a===0) return '0'; return NF2.format(v);}
+function fT(s){ if(s==null||!isFinite(s)) return '∞'; if(s<1) return NF.format(s*1000)+' ms'; if(s<90) return NF1.format(s)+' s';
+  if(s<5400) return NF1.format(s/60)+' min'; if(s<172800) return NF1.format(s/3600)+' h'; return NF1.format(s/86400)+' d';}
+function fUSD(v){ if(!isFinite(v)) return '—'; if(v>=1e6) return 'US$ '+NF1.format(v/1e6)+' M'; if(v>=1e4) return 'US$ '+NF1.format(v/1e3)+' k'; return 'US$ '+NF.format(v);}
+function fPct(v){ if(!isFinite(v)) return '—'; return (v<0.1&&v>0? NF2.format(v): NF1.format(v))+' %';}
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const el=(tag,attrs={},html)=>{const e=document.createElement(tag);for(const k in attrs){if(k==='class')e.className=attrs[k];else e.setAttribute(k,attrs[k]);} if(html!=null)e.innerHTML=html; return e;};
+const svgEl=(tag,attrs={})=>{const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;};
+/* Cola genérica: entra inR (unid/s), capacidad cap (unid/s). Devuelve salida, cola, utilización y espera. */
+function Q(st,key,inR,cap,dt){
+  let q=(st[key]||0)+Math.max(0,inR)*dt; const c=Math.max(0,cap);
+  const done=Math.min(q,c*dt); q-=done; st[key]=q;
+  const out=done/dt;
+  return {out,q,util: c>0? out/c + (q>c*2?0.15:0) : (inR>0||q>0?1.2:0), wait: c>0? q/c : (inR>0? q/inR : (q>0?Infinity:0))};
+}
+const KIND_COLOR={data:'--s1',log:'--s7',error:'--s8',query:'--s3',repl:'--s4',doc:'--s2',image:'--s5',embed:'--s6'};
+const KIND_NAME={data:'Telemetría / datos',log:'Logs',error:'Errores / inválidos',query:'Consultas',repl:'Réplica',doc:'Documentos',image:'Imágenes',embed:'Vectores / embeddings'};
+
+/* Helpers para definir controles */
+const R=(id,label,min,max,step,value,unit,help)=>({type:'range',id,label,min,max,step,value,unit,help});
+const S=(id,label,options,value,help)=>({type:'select',id,label,options,value,help});
+const T=(id,label,value,help)=>({type:'toggle',id,label,value,help});
+const B=(id,label,help)=>({type:'button',id,label,help});
+
+function flag(s,key,cond,lvl,on,off){
+  const prev=!!s.flags[key];
+  if(cond&&!prev){ s.flags[key]=true; if(on) s.log(lvl,on); }
+  else if(!cond&&prev){ s.flags[key]=false; if(off) s.log('ok',off); }
+}
+
+/* ============================================================
+   ESQUEMA 1 · Telemetría SCADA (pipeline IoT)
+   ============================================================ */
+const SIM1={
+  id:'telemetria',
+  title:'Esquema 1 · Telemetría de aerogeneradores en Google Cloud',
+  subtitle:'Ingesta → Pub/Sub → Dataflow → Bronze/Silver/Gold → réplica on-premise → BI',
+  vb:[1200,640],
+  zones:[
+    {x:10,y:34,w:322,h:590,c:'--z1',t:'1 · INGESTA Y DESACOPLAMIENTO'},
+    {x:338,y:34,w:162,h:590,c:'--z2',t:'2 · STREAMING (ETL)'},
+    {x:590,y:34,w:166,h:590,c:'--z3',t:'3 · DATALAKE Y BD'},
+    {x:885,y:34,w:308,h:278,c:'--z5',t:'5 · CONSUMO BI'},
+    {x:885,y:322,w:308,h:302,c:'--z4',t:'4 · RÉPLICA HÍBRIDA'}
+  ],
+  nodes:[
+    {id:'turb',x:20,y:80,l:'Aerogeneradores',s:'SCADA · sensores',info:'Cada turbina tiene decenas de sensores (viento, rotor, pitch, temperatura de generador y multiplicadora, vibraciones, potencia). Tasa total = turbinas × sensores × frecuencia de muestreo. Con 50 × 50 × 4 Hz se obtienen los ≈10.000 msg/s del diseño.'},
+    {id:'gw',x:20,y:250,l:'Gateway MQTT',s:'Protobuf / JSON',info:'Recibe la telemetría de las turbinas por MQTT y la publica en Pub/Sub. Protobuf pesa ~3,6 veces menos que JSON, lo que reduce ancho de banda y costo de Pub/Sub. Si las turbinas pierden conexión, el gateway guarda datos y luego los envía en ráfaga.',fix:'Pub/Sub valida el esquema AVRO <i>al publicar</i>: un mensaje inválido se rechaza y es el gateway quien debe desviarlo. El Dead-letter topic, en Pub/Sub real, recibe los mensajes que un suscriptor no logra procesar tras N intentos. El simulador muestra ambos casos llegando al mismo destino de errores.'},
+    {id:'pst',x:180,y:160,l:'Pub/Sub',s:'topic iot-telemetry',info:'Amortiguador entre productores y consumidores. Retiene mensajes no confirmados hasta 7 días: si Dataflow se cae o se atrasa, nada se pierde, solo crece el backlog y la latencia.',fix:'El término "Sub-streaming" del diagrama original no existe en Pub/Sub; se omitió. El topic tiene esquema AVRO, retención de 7 días y una suscripción para Dataflow.'},
+    {id:'dlt',x:180,y:280,l:'Dead-letter topic',s:'mensajes inválidos',info:'Destino de los mensajes que no cumplen el esquema o no se pudieron procesar. Se revisan y reprocesan aparte, sin frenar el flujo principal.'},
+    {id:'psl',x:180,y:420,l:'Pub/Sub',s:'topic device-logs',info:'Logs operativos en JSON sin estructura. Filtrar por severidad en el origen (en la turbina o el gateway) es la palanca que más reduce el volumen: DEBUG genera ~400 veces más que ERROR.'},
+    {id:'df',x:345,y:150,h:70,l:'Cloud Dataflow',s:'Apache Beam · etapas A→D',info:'A: ventanas de tiempo con watermarks y tolerancia a datos tardíos. B: validación, side-inputs (ficha técnica de cada turbina), relleno de nulos, geolocalización. C: escribe en tres destinos. D: errores al bucket de reproceso. El autoscaling agrega workers según el backlog de Pub/Sub, pero cada worker nuevo tarda ~1 minuto en arrancar.'},
+    {id:'errb',x:345,y:300,l:'GCS errores',s:'reproceso (etapa D)',info:'Registros que fallaron en el enriquecimiento. Quedan guardados para corregir y reprocesar.'},
+    {id:'cf',x:345,y:420,l:'Cloud Functions',s:'regex de logs',info:'Procesamiento liviano de logs: extrae campos con expresiones regulares, escribe en Firestore y guarda una copia comprimida en GCS. Cada instancia atiende un número limitado de logs por segundo.'},
+    {id:'bronze',x:600,y:70,l:'GCS Bronze',s:'Parquet crudo inmutable',info:'Copia cruda e inmutable de todo lo recibido. Permite reconstruir cualquier capa superior. La clase de almacenamiento cambia el costo: Coldline es barata para guardar pero cobra por leer.'},
+    {id:'silver',x:600,y:160,l:'GCS Silver',s:'Parquet año/mes',info:'Datos limpios y particionados por año y mes. BigQuery los lee directamente como tablas BigLake.'},
+    {id:'bt',x:600,y:250,l:'Bigtable',s:'series de tiempo',info:'Base de baja latencia para el monitoreo en vivo. Su rendimiento depende del diseño de la clave de fila: si muchas escrituras caen en el mismo rango de claves, un solo nodo se satura (hotspot) aunque haya otros libres.',fix:'Se agregó la elección de clave de fila. La clave original <code>device_id#timestamp</code> puede generar hotspot si unas pocas turbinas envían mucho más. El timestamp invertido ayuda a leer primero lo más reciente, pero no reparte escrituras; el prefijo con hash (salting) sí.'},
+    {id:'bq',x:600,y:340,l:'BigQuery Gold',s:'partición · clustering · MV',info:'Data warehouse analítico. Particionar por fecha, agrupar (clustering) por turbina/región y usar vistas materializadas reduce drásticamente los bytes escaneados por consulta, y con ello costo y latencia.'},
+    {id:'fs',x:600,y:430,l:'Firestore',s:'logs indexados',info:'Guarda los campos extraídos de los logs para consultas rápidas desde aplicaciones.'},
+    {id:'dpx',x:600,y:540,l:'Dataplex',s:'catálogo · linaje · calidad',info:'Gobierno de datos transversal a GCS, Bigtable y BigQuery: catálogo, linaje y reglas de calidad. No transporta datos, por eso no tiene flujo.'},
+    {id:'looker',x:895,y:70,l:'Looker',s:'LookML · BI Engine',info:'Traduce cada consulta a SQL que se ejecuta en BigQuery, sin extraer datos. BI Engine es una caché en memoria que responde en menos de un segundo si la consulta escanea poco.'},
+    {id:'pbi',x:1045,y:160,l:'Power BI',s:'',info:'Tres modos: DirectQuery (consulta BigQuery en vivo), Import (copia programada; menos carga, menos frescura) o conexión a la base on-premise (depende de la réplica).'},
+    {id:'mon',x:895,y:250,l:'Monitoreo en vivo',s:'sala de control',info:'Pantallas de operación que leen Bigtable con latencia de milisegundos.'},
+    {id:'rep',x:895,y:370,l:'Job de réplica',s:'',info:'Lleva un resumen (telemetría diaria/horaria, alarmas, estado de equipos) desde BigQuery hacia la base on-premise.',fix:'En el diseño original esta pieza era <b>Datastream</b>, que no sirve: Datastream lee de bases transaccionales (Oracle, MySQL, PostgreSQL, SQL Server…) y escribe en BigQuery o GCS; no lee desde BigQuery ni escribe en bases on-premise. Se reemplaza por un job programado (Dataflow / exportación a JDBC) o una herramienta de terceros (Striim, Fivetran). Puedes elegir "Datastream (original)" para ver qué pasa.'},
+    {id:'vpn',x:895,y:460,l:'Cloud VPN HA',s:'IPsec AES-256',info:'Túnel cifrado hacia el data center local. En modo HA hay dos túneles: si uno cae, el otro sostiene el tráfico.'},
+    {id:'onp',x:1045,y:460,l:'SQL Server / Oracle',s:'on-premise',info:'Espejo resumido que alimenta ERP/CRM. Su capacidad de escritura (filas/s) suele ser el cuello de botella de la réplica.'},
+    {id:'erp',x:1045,y:555,l:'ERP / CRM',s:'sistemas legados',info:'Sistemas antiguos que consumen el espejo on-premise.'}
+  ],
+  edges:[
+    {id:'e1',f:'turb',t:'gw',k:'data'},{id:'e2',f:'gw',t:'pst',k:'data'},{id:'e3',f:'gw',t:'psl',k:'log'},
+    {id:'e4',f:'pst',t:'dlt',k:'error'},{id:'e5',f:'pst',t:'df',k:'data'},{id:'e6',f:'psl',t:'cf',k:'log'},
+    {id:'e7',f:'df',t:'bronze',k:'data'},{id:'e8',f:'df',t:'bt',k:'data'},{id:'e9',f:'df',t:'bq',k:'data'},{id:'e10',f:'df',t:'errb',k:'error'},
+    {id:'e11',f:'bronze',t:'silver',k:'data'},{id:'e12',f:'silver',t:'bq',k:'data',bend:'right'},
+    {id:'e13',f:'cf',t:'fs',k:'log'},{id:'e14',f:'cf',t:'bronze',k:'log'},
+    {id:'e15',f:'bt',t:'mon',k:'data'},{id:'e16',f:'bq',t:'looker',k:'query'},{id:'e17',f:'bq',t:'pbi',k:'query'},
+    {id:'e18',f:'bq',t:'rep',k:'repl'},{id:'e19',f:'rep',t:'vpn',k:'repl'},{id:'e20',f:'vpn',t:'onp',k:'repl'},{id:'e21',f:'onp',t:'erp',k:'repl'},{id:'e22',f:'onp',t:'pbi',k:'query'}
+  ],
+  controls:[
+    {g:'Parque y sensores',open:true,items:[
+      R('nT','Aerogeneradores',5,200,1,50,'turb.','Número de turbinas que envían telemetría.'),
+      R('nS','Sensores por turbina',10,200,1,50,'sens.','Señales distintas por turbina.'),
+      R('hz','Frecuencia de muestreo',0.2,10,0.1,4,'Hz','Lecturas por segundo de cada sensor. 50 × 50 × 4 = 10.000 msg/s.'),
+      R('wind','Velocidad del viento',0,30,0.5,9,'m/s','Arranque ~3 m/s, nominal ~12 m/s, corte por seguridad a 25 m/s. Sobre 20 m/s aumentan alarmas y logs.'),
+      R('gust','Turbulencia / ráfagas',0,100,1,20,'%','Variabilidad del viento y del tráfico (ráfagas de mensajes).'),
+      T('rbe','Reporte por excepción (deadband)',false,'El sensor solo envía si el valor cambia más que un umbral. Reduce mucho el tráfico cuando el viento es estable.'),
+      S('fmt','Formato del mensaje',[['proto','Protobuf (~180 B)'],['json','JSON (~650 B)']],'proto','Afecta ancho de banda, costo de Pub/Sub y almacenamiento.'),
+      R('bad','Mensajes malformados',0,20,0.1,0.5,'%','Fallan la validación AVRO y se desvían.'),
+      R('latePct','Datos que llegan tarde',0,30,0.5,2,'%','Por cortes de red o buffers en el gateway.'),
+      R('lateDelay','Atraso típico de los tardíos',5,900,5,30,'s','Retraso medio (distribución exponencial).')
+    ]},
+    {g:'Logs (device-logs → Cloud Functions)',items:[
+      S('logLvl','Filtro de severidad en origen',[['DEBUG','DEBUG (todo)'],['INFO','INFO'],['WARN','WARN'],['ERROR','ERROR']],'WARN','Qué logs se publican. DEBUG multiplica el volumen.'),
+      R('cfMax','Máx. instancias Cloud Functions',1,100,1,20,'inst.','Cada instancia procesa ~60 logs/s.')
+    ]},
+    {g:'Dataflow (procesamiento)',open:true,items:[
+      T('dfAuto','Autoscaling',true,'Ajusta workers según el backlog. Sin autoscaling, quedan fijos en el mínimo.'),
+      R('dfMin','Workers mínimos (o fijos)',1,20,1,2,'w',''),
+      R('dfMax','Workers máximos',1,60,1,20,'w','Tope de escalado (controla el costo).'),
+      R('dfCap','Capacidad por worker',300,6000,100,2000,'msg/s','Depende del tipo de máquina y de la complejidad de la transformación.'),
+      T('enrich','Enriquecimiento con side-inputs',true,'Cruza con la ficha técnica de cada turbina y geolocaliza. Cuesta ~15 % de CPU.'),
+      R('win','Ventana de agregación',10,600,10,60,'s','Tamaño de la ventana (etapa A). Más grande = más latencia hacia BigQuery.'),
+      R('lateness','Tolerancia a tardíos (allowed lateness)',0,1800,10,60,'s','Cuánto tiempo se mantiene abierta una ventana para aceptar datos tardíos. Más tolerancia = menos pérdidas pero más estado en memoria.'),
+      T('dfDown','Simular caída de Dataflow',false,'El job se detiene (despliegue fallido, error de código).')
+    ]},
+    {g:'Bigtable (monitoreo en vivo)',items:[
+      R('btNodes','Nodos Bigtable',1,30,1,3,'nodos',''),
+      R('btNodeCap','Escrituras por nodo',2000,20000,500,10000,'filas/s','Rendimiento aproximado por nodo.'),
+      S('btKey','Diseño de la clave de fila',[['dev_ts','device_id#timestamp (original)'],['rev','device_id#timestamp_invertido'],['salt','hash(device)#device_id#ts (salting)'],['ts_dev','timestamp#device_id (anti-patrón)']],'dev_ts','Determina cómo se reparten las escrituras entre nodos.'),
+      R('skew','Tráfico de las 5 turbinas más "ruidosas"',2,80,1,10,'%','Concentración del tráfico. Turbinas con fallas o firmware antiguo pueden enviar mucho más.')
+    ]},
+    {g:'BigQuery y BI',items:[
+      T('bqPart','Particionado por fecha',true,''),T('bqClus','Clustering por turbina/región',true,''),
+      T('bqMV','Vistas materializadas por hora',true,''),T('biEngine','Caché BI Engine',true,''),
+      R('hist','Historia en BigQuery',30,1825,30,365,'días','Tamaño de la tabla.'),
+      R('lookUsers','Usuarios de Looker',0,300,1,20,'usr',''),
+      R('qph','Consultas por usuario y hora',1,200,1,30,'q/h','Cada refresco de un tablero lanza varias consultas.'),
+      S('pbiMode','Modo de Power BI',[['dq','DirectQuery a BigQuery (recomendado)'],['imp','Import programado'],['loc','Conexión a la base on-premise']],'dq',''),
+      R('pbiUsers','Usuarios de Power BI',0,300,1,15,'usr',''),
+      R('pbiRefresh','Intervalo de refresco Import',15,1440,15,60,'min','')
+    ]},
+    {g:'Réplica hacia on-premise',open:true,items:[
+      S('repMethod','Mecanismo de réplica',[['export','Job programado Dataflow/BQ → JDBC (corregido)'],['striim','Herramienta de terceros (Striim/Fivetran)'],['datastream','Datastream desde BigQuery (original, inválido)']],'export',''),
+      R('repInt','Intervalo del job programado',5,1440,5,60,'min',''),
+      S('repGran','Granularidad del espejo',[['min','Por minuto'],['hora','Por hora'],['dia','Diaria']],'hora','Cuánto se resume antes de replicar.'),
+      T('vpnHA','VPN en alta disponibilidad (2 túneles)',true,''),
+      S('vpnFail','Falla de túneles',[['none','Ninguna'],['one','Cae un túnel'],['both','Caen todos']],'none',''),
+      R('onpTPS','Capacidad de escritura on-premise',50,10000,50,2000,'filas/s','')
+    ]},
+    {g:'Supuestos de precios (USD, ilustrativos)',items:[
+      R('psTiB','Pub/Sub por TiB',10,100,1,40,'$/TiB',''),R('dfWorkerH','Worker Dataflow por hora',0.05,1,0.01,0.25,'$/h',''),
+      R('btNodeH','Nodo Bigtable por hora',0.2,2,0.01,0.65,'$/h',''),R('bqTiB','BigQuery por TiB escaneado',1,20,0.25,6.25,'$/TiB',''),
+      S('bronzeClass','Clase de GCS Bronze',[['standard','Standard'],['nearline','Nearline'],['coldline','Coldline']],'coldline',''),
+      R('silverReads','Reconstrucciones de Silver desde Bronze al mes',0,10,1,1,'veces','Cada lectura de Bronze en Nearline/Coldline cobra recuperación.')
+    ]}
+  ],
+  events:[
+    {id:'burst',label:'⚡ Reconexión: 20 % de turbinas vuelven tras 10 min offline',help:'El gateway envía en ráfaga lo acumulado y muchos datos llegan con ~10 min de atraso.'},
+    {id:'schema',label:'🧩 Firmware nuevo cambia el esquema (3 min)',help:'El 40 % de los mensajes deja de cumplir el esquema AVRO.'}
+  ],
+  presets:[
+    {n:'Operación normal (≈10.000 msg/s)',d:'Diseño de referencia con las correcciones aplicadas.',set:{}},
+    {n:'Tormenta (28 m/s)',d:'Corte por seguridad: la potencia cae a cero, pero alarmas y logs se disparan.',set:{wind:28,gust:70}},
+    {n:'Parque ampliado a 150 turbinas',d:'El tráfico se triplica. Observa el autoscaling y el tope de workers.',set:{nT:150}},
+    {n:'Hotspot en Bigtable',d:'Pocas turbinas concentran el tráfico y la clave no lo reparte.',set:{skew:60,btNodes:6,nT:120}},
+    {n:'Diseño original (Datastream)',d:'Réplica con Datastream desde BigQuery, como en el PDF original.',set:{repMethod:'datastream',pbiMode:'loc'}},
+    {n:'Costo mínimo',d:'Protobuf, reporte por excepción, filtro ERROR, réplica diaria.',set:{rbe:true,logLvl:'ERROR',repGran:'dia',repInt:1440,dfMax:8}},
+    {n:'BigQuery sin optimizar',d:'Sin partición, clustering, vistas ni caché: mira la latencia y el costo de los tableros.',set:{bqPart:false,bqClus:false,bqMV:false,biEngine:false,lookUsers:80}}
+  ],
+  warm(s){ s.w=s.target; s.qPS=0; s.qBT=0; s.wUp=0; },
+  init(s,p){ s.w=p.dfMin; s.wUp=0; s.wDn=0; s.burst=0; s.schemaT=-1; s.lateT=-1; s.nextRep=0; s.lastRepT=0; s.pendingBatch=false; },
+  onEvent(id,s,p){
+    if(id==='burst'){ const R0=p.nT*p.nS*p.hz; s.burst+=R0*0.2*600; s.lateT=s.t+180; s.log('warn','Reconexión: llegan ~'+fN(R0*0.2*600)+' mensajes atrasados ~10 min.'); }
+    if(id==='schema'){ s.schemaT=s.t+180; s.log('crit','Firmware nuevo: 40 % de los mensajes no cumple el esquema AVRO.'); }
+  },
+  step(s,p,dt){
+    const t=s.t, g=p.gust/100;
+    const v=Math.max(0,p.wind*(1+g*0.35*Math.sin(t/9)*Math.cos(t/31+1)));
+    const cut=v>=25, pT=(v<3||cut)?0:v>=12?4.2:4.2*(v**3-27)/(1728-27);
+    s.v=v; s.MW=pT*p.nT;
+    let Rr=p.nT*p.nS*p.hz;
+    if(p.rbe) Rr*=Math.min(1,0.3+0.55*g+(cut?0.3:0)+(v>20?0.15:0));
+    Rr*=1+g*0.3*Math.max(0,Math.sin(t/2.3)*Math.sin(t/5.7));
+    Rr+=p.nT*p.hz*(cut?30:v>20?8:0.2);
+    let burst=0; if(s.burst>0){burst=Math.min(s.burst,Rr*1.5*dt)/dt; s.burst-=burst*dt; if(s.burst<1)s.burst=0;}
+    const ing=Rr+burst, Bm=p.fmt==='json'?650:180;
+    s.ing=ing; s.Mbps=ing*Bm*8/1e6;
+    const schema=s.schemaT>t;
+    const badF=Math.min(0.95,(schema?40:p.bad)/100), dlt=ing*badF, valid=ing-dlt;
+    s.dlt=dlt;
+    const lr={DEBUG:20,INFO:5,WARN:0.5,ERROR:0.05}[p.logLvl], storm=cut?6:v>20?3:1;
+    const logs=p.nT*lr*storm*(schema?4:1);
+    const cf=Q(s,'qCF',logs,p.cfMax*60,dt);
+    // Dataflow
+    const capW=p.dfCap*(p.enrich?0.85:1)*(1-Math.min(0.3,p.lateness/3600*0.5));
+    const target=p.dfAuto? clamp(Math.ceil((valid+(s.qPS||0)/120)/(capW*0.8)),p.dfMin,Math.max(p.dfMin,p.dfMax)) : p.dfMin;
+    s.target=target;
+    if(target>s.w){ s.wUp+=dt; if(s.wUp>=60){ s.log('info','Autoscaling: Dataflow pasa de '+s.w+' a '+target+' workers (tras ~1 min de arranque).'); s.w=target; s.wUp=0; } } else s.wUp=0;
+    if(target<s.w){ s.wDn+=dt; if(s.wDn>=120){ const nw=Math.max(target,s.w-Math.ceil((s.w-target)/2)); s.log('info','Autoscaling reduce workers: '+s.w+' → '+nw+'.'); s.w=nw; s.wDn=0; } } else s.wDn=0;
+    // Bigtable
+    const n=p.btNodes, sk=p.skew/100;
+    const share={dev_ts:Math.min(1,Math.max(1/n,sk*0.6+(1-sk)/n)), rev:Math.min(1,Math.max(1/n,sk*0.6+(1-sk)/n)), salt:1.05/n, ts_dev:1}[p.btKey];
+    const btCap=Math.min(n*p.btNodeCap,p.btNodeCap/share);
+    let dfCapTot=p.dfDown?0:s.w*capW;
+    s.backpressure=(s.qBT||0)>btCap*20;
+    if(s.backpressure) dfCapTot=Math.min(dfCapTot,btCap*1.02);
+    const ps=Q(s,'qPS',valid,dfCapTot,dt);
+    const out=ps.out; s.out=out;
+    const err=out*(p.enrich?0.003:0.001), good=out-err;
+    const lateF=Math.min(0.9,(p.latePct+(s.lateT>t?35:0))/100), lateD=s.lateT>t?600:p.lateDelay;
+    const dropF=lateF*Math.exp(-p.lateness/lateD); s.dropF=dropF;
+    const bt=Q(s,'qBT',good,btCap,dt);
+    s.hot=good*share/p.btNodeCap*100;
+    const bqIn=good*(1-dropF);
+    s.latBT=1.2+ps.wait+bt.wait; s.latBQ=p.win/2+4+ps.wait;
+    s.psWait=ps.wait; s.qPSv=s.qPS;
+    // BigQuery
+    s.dayGB=bqIn*86400*Bm*0.5/1e9; const tableGB=s.dayGB*p.hist;
+    let scan=p.bqPart? s.dayGB : tableGB; if(p.bqClus) scan*=0.15; if(p.bqMV) scan=Math.max(0.002,scan*0.01);
+    s.scan=scan; s.qLat=(p.biEngine&&scan<100)? 0.25+scan/300 : 0.9+scan/6;
+    const qps=(p.lookUsers*p.qph+(p.pbiMode==='dq'?p.pbiUsers*p.qph:0))/3600; s.qps=qps;
+    // Réplica
+    const granS={min:60,hora:3600,dia:86400}[p.repGran], rowsPerS=p.nT*20/granS;
+    const tun=p.vpnHA?2:1, failed=p.vpnFail==='one'?1:p.vpnFail==='both'?2:0, up=Math.max(0,tun-failed); s.tunUp=up; s.tun=tun;
+    const repCap=up>0? Math.min(p.onpTPS, up*3e9/8/250) : 0;
+    let repRate=0;
+    if(p.repMethod==='datastream'){ s.repQ=0; }
+    else if(p.repMethod==='export'){
+      if(t>=s.nextRep){ s.repQ=(s.repQ||0)+rowsPerS*p.repInt*60; s.batchDataT=t; s.nextRep=t+p.repInt*60; s.pendingBatch=true; }
+      const r=Q(s,'repQ',0,repCap,dt); repRate=r.out;
+      if(s.pendingBatch && s.repQ<1){ s.lastRepT=s.batchDataT; s.pendingBatch=false; }
+    } else {
+      const r=Q(s,'repQ',rowsPerS,repCap,dt); repRate=r.out;
+      if(repCap>0 && s.repQ<rowsPerS*120+1) s.lastRepT=t-45-r.wait;
+    }
+    s.repRate=repRate; s.repFresh=Math.max(0,t-s.lastRepT)+granS/2;
+    s.pbiFresh=p.pbiMode==='dq'? s.latBQ+s.qLat : p.pbiMode==='imp'? p.pbiRefresh*30+s.latBQ : s.repFresh;
+    // Costos
+    const H=730, sec=2.628e6;
+    const c={};
+    c['Pub/Sub']=ing*Bm*sec/1.0995e12*2*p.psTiB;
+    c['Dataflow']=s.w*H*p.dfWorkerH;
+    c['Bigtable']=n*H*p.btNodeH;
+    const brGB=ing*Bm*sec/1e9*0.4, price={standard:0.02,nearline:0.01,coldline:0.004}[p.bronzeClass], retr={standard:0,nearline:0.01,coldline:0.02}[p.bronzeClass];
+    c['GCS (Bronze 12 meses)']=brGB*12*price+p.silverReads*brGB*12*retr;
+    let bqc=qps*sec*scan/1024*p.bqTiB;
+    if(p.pbiMode==='imp') bqc+=(1440/p.pbiRefresh)*30*(p.bqPart? s.dayGB*p.pbiRefresh/1440 : tableGB)/1024*1.1;
+    c['BigQuery consultas']=bqc;
+    c['Functions + Firestore']=p.cfMax*0.4*cf.util*H*0.1+logs*sec/1e6*0.18;
+    c['Réplica']=p.repMethod==='striim'?2500:p.repMethod==='export'? (p.repInt<=15?220:60):0;
+    c['VPN']=tun*0.05*H;
+    s.costs=c; s.cost=Object.values(c).reduce((a,b)=>a+b,0);
+    // Vista del diagrama
+    const N=s.N={}, E=s.E={}, X=s.X={};
+    const lvl=(u,w)=> u>1.02||w>300?'crit': u>0.85||w>30?'warn':'ok';
+    N.turb={u:pT/4.2,st:cut?'warn':'ok',v:NF1.format(v)+' m/s · '+NF1.format(s.MW)+' MW',b:cut?'⚠ corte':''};
+    N.gw={u:Math.min(1,ing/(Rr*2.5)),st:s.burst>0?'warn':'ok',v:fN(ing)+' msg/s · '+NF1.format(s.Mbps)+' Mbps',b:s.burst>0?'⚡ ráfaga':''};
+    N.pst={u:clamp(ps.wait/120,0,1.1),st:lvl(0,ps.wait),v:'backlog '+fN(s.qPS)+' · '+fT(ps.wait),b:ps.wait>30?'⚠':''};
+    N.dlt={u:clamp(badF*5,0,1),st:badF>0.1?'crit':badF>0.02?'warn':'ok',v:fN(dlt)+' msg/s',b:badF>0.1?'✕':''};
+    N.psl={u:clamp(logs/20000,0,1),st:p.logLvl==='DEBUG'?'warn':'ok',v:fN(logs)+' logs/s'};
+    N.df={u:p.dfDown?1.2:ps.util,st:p.dfDown?'crit':lvl(ps.util,ps.wait),v:s.w+' workers (obj. '+target+') · '+fN(out)+' msg/s',b:p.dfDown?'✕ detenido':s.wUp>0?'↑ escalando':''};
+    N.errb={u:clamp(err/50,0,1),st:'ok',v:fN(err)+' reg/s'};
+    N.cf={u:cf.util,st:lvl(cf.util,cf.wait),v:fN(cf.out)+' logs/s · cola '+fN(s.qCF)};
+    N.bronze={u:0.3,st:'ok',v:NF1.format(brGB/30)+' GB/día'};
+    N.silver={u:0.3,st:'ok',v:'compactación horaria'};
+    N.bt={u:s.hot/100,st:s.hot>100?'crit':s.hot>75?'warn':'ok',v:'nodo más cargado '+NF.format(s.hot)+' %',b:s.hot>100?'🔥 hotspot':''};
+    N.bq={u:clamp(qps/20,0,1),st:scan>500?'warn':'ok',v:NF1.format(s.dayGB)+' GB/día · '+NF2.format(scan)+' GB/consulta'};
+    N.fs={u:cf.util*0.6,st:'ok',v:fN(cf.out)+' docs/s'};
+    N.dpx={u:0,st:'ok',v:'gobierno transversal'};
+    N.looker={u:clamp(s.qLat/10,0,1),st:s.qLat>10?'warn':'ok',v:p.lookUsers+' usr · '+fT(s.qLat)+'/consulta'};
+    N.pbi={u:0.3,st:s.pbiFresh>86400?'crit':s.pbiFresh>7200?'warn':'ok',v:'frescura '+fT(s.pbiFresh),s:{dq:'DirectQuery',imp:'Import',loc:'on-premise'}[p.pbiMode]};
+    N.mon={u:0.3,st:s.latBT>60?'crit':s.latBT>10?'warn':'ok',v:'latencia '+fT(s.latBT)};
+    const repLabel={export:'Dataflow → JDBC',striim:'Striim / Fivetran',datastream:'Datastream (inválido)'}[p.repMethod];
+    N.rep={u:repCap>0? clamp(repRate/repCap,0,1):0,st:p.repMethod==='datastream'?'invalid':(s.repQ>0&&repCap===0?'crit':'ok'),v:p.repMethod==='datastream'?'no soportado':fN(repRate)+' filas/s',s:repLabel,b:p.repMethod==='datastream'?'✕':''};
+    N.vpn={u:up/tun,st:up===0?'crit':up<tun?'warn':'ok',v:up+'/'+tun+' túneles arriba',b:up===0?'✕':up<tun?'⚠':''};
+    N.onp={u:repCap>0?clamp(repRate/p.onpTPS,0,1):0,st:s.repFresh>granS*3+7200?'warn':'ok',v:'antigüedad '+fT(s.repFresh)};
+    N.erp={u:0.2,st:'ok',v:'lee el espejo'};
+    E.e1=ing;E.e2=valid+dlt;E.e3=logs;E.e4=dlt;E.e5=out;E.e6=cf.out;E.e7=good;E.e8=bt.out;E.e9=bqIn;E.e10=err;E.e11=good*0.9;E.e12=good*0.9;E.e13=cf.out;E.e14=cf.out*0.5;
+    E.e15=bt.out*0.05;E.e16=p.lookUsers*p.qph/3600;E.e17=p.pbiMode==='dq'?p.pbiUsers*p.qph/3600:p.pbiMode==='imp'?0.05:0;
+    E.e18=repRate;E.e19=repRate;E.e20=repRate;E.e21=repRate*0.2;E.e22=p.pbiMode==='loc'?p.pbiUsers*p.qph/3600:0;
+    if(p.repMethod==='datastream'){X.e18='invalid';}
+    if(up===0){X.e20='invalid';}
+    if(p.pbiMode!=='loc') X.e22='off';
+    if(p.pbiMode==='loc') X.e17='off';
+    if(p.dfDown){X.e7='idle';X.e8='idle';X.e9='idle';}
+    // Bitácora por transiciones
+    flag(s,'dfdown',p.dfDown,'crit','Dataflow detenido: Pub/Sub empieza a acumular (retiene hasta 7 días).','Dataflow vuelve a procesar; el backlog comienza a drenar.');
+    flag(s,'backlog',ps.wait>60&&!p.dfDown,'warn','El backlog de Pub/Sub supera 1 minuto de espera.','El backlog de Pub/Sub volvió a niveles normales.');
+    flag(s,'hot',s.hot>100,'crit','Hotspot en Bigtable: un nodo supera su capacidad.','Bigtable ya no tiene nodos saturados.');
+    flag(s,'bp',s.backpressure,'crit','Presión de retorno: Bigtable frena a Dataflow y el atraso se propaga a Pub/Sub.','Se terminó la presión de retorno desde Bigtable.');
+    flag(s,'cut',cut,'warn','Viento ≥ 25 m/s: turbinas en corte por seguridad (0 MW), aumentan alarmas.','El viento bajó de 25 m/s: turbinas vuelven a generar.');
+    flag(s,'vpn',up===0,'crit','Sin túneles VPN: la réplica on-premise se detiene.','VPN restablecida.');
+    flag(s,'vpn1',up>0&&up<tun,'warn','Cayó un túnel VPN; HA mantiene el tráfico por el otro.',null);
+    flag(s,'ds',p.repMethod==='datastream','crit','Réplica configurada con Datastream desde BigQuery: no es un origen soportado.',null);
+    flag(s,'schema',schema,'crit',null,'El esquema volvió a la normalidad.');
+    flag(s,'cfsat',cf.util>1,'warn','Cloud Functions saturado: los logs se encolan.','Cloud Functions se desahogó.');
+  },
+  sample(s){return {ing:s.ing,out:s.out,qPS:s.qPS||0,latBT:Math.min(s.latBT,7200),latBQ:Math.min(s.latBQ,7200),w:s.w,target:s.target};},
+  kpis:[
+    {l:'Ingesta',v:s=>fN(s.ing)+' msg/s',sub:s=>NF1.format(s.Mbps)+' Mbps · '+NF1.format(s.MW)+' MW generados'},
+    {l:'Backlog Pub/Sub',v:s=>fN(s.qPS||0)+' msgs',sub:s=>'espera ≈ '+fT(s.psWait),st:s=>s.psWait>300?'crit':s.psWait>30?'warn':'ok'},
+    {l:'Workers Dataflow',v:s=>s.w+' / obj. '+s.target,sub:(s,p)=>'tope '+p.dfMax+(p.dfAuto?' · autoscaling':' · fijos'),st:(s,p)=>s.target>=p.dfMax&&s.psWait>30?'warn':'ok'},
+    {l:'Latencia a Bigtable',v:s=>fT(s.latBT),sub:()=>'dato visible en sala de control',st:s=>s.latBT>60?'crit':s.latBT>10?'warn':'ok'},
+    {l:'Latencia a BigQuery',v:s=>fT(s.latBQ),sub:(s,p)=>'incluye ventana de '+p.win+' s',st:s=>s.latBQ>600?'crit':s.latBQ>180?'warn':'ok'},
+    {l:'Desviados / descartados',v:s=>fPct((s.dlt/s.ing+s.dropF)*100),sub:s=>'DLT '+fN(s.dlt)+'/s · tardíos '+fPct(s.dropF*100),st:s=>(s.dlt/s.ing+s.dropF)>0.05?'crit':(s.dlt/s.ing+s.dropF)>0.01?'warn':'ok'},
+    {l:'Nodo Bigtable más cargado',v:s=>NF.format(s.hot)+' %',sub:(s,p)=>p.btNodes+' nodos',st:s=>s.hot>100?'crit':s.hot>75?'warn':'ok'},
+    {l:'Consulta de tablero',v:s=>fT(s.qLat),sub:s=>NF2.format(s.scan)+' GB escaneados',st:s=>s.qLat>10?'warn':'ok'},
+    {l:'Frescura Power BI',v:s=>fT(s.pbiFresh),sub:(s,p)=>({dq:'DirectQuery',imp:'Import',loc:'vía on-premise'})[p.pbiMode],st:s=>s.pbiFresh>86400?'crit':s.pbiFresh>3600?'warn':'ok'},
+    {l:'Antigüedad on-premise',v:(s,p)=>p.repMethod==='datastream'?'sin datos':fT(s.repFresh),sub:(s,p)=>p.repMethod==='datastream'?'Datastream no aplica':'ERP/CRM ven esto',st:(s,p)=>p.repMethod==='datastream'?'crit':'ok'},
+    {l:'Costo mensual estimado',v:s=>fUSD(s.cost),sub:()=>'precios ilustrativos editables'}
+  ],
+  charts:[
+    {t:'Ingesta vs. procesado',u:'msg/s',k:[['ing','Ingesta','--s1'],['out','Procesado por Dataflow','--s2']],f:fN},
+    {t:'Backlog en Pub/Sub',u:'mensajes',k:[['qPS','Backlog','--s1']],f:fN},
+    {t:'Latencia extremo a extremo',u:'segundos',k:[['latBT','Hacia Bigtable','--s1'],['latBQ','Hacia BigQuery','--s2']],f:fT},
+    {t:'Workers de Dataflow',u:'workers',k:[['w','Activos','--s1'],['target','Objetivo','--s2']],f:fN}
+  ],
+  insights(s,p){
+    const o=[];
+    if(p.repMethod==='datastream') o.push(['crit','Datastream no puede hacer esto','Datastream captura cambios <i>desde</i> bases transaccionales y los escribe <i>en</i> BigQuery o GCS. No lee de BigQuery ni escribe en SQL Server/Oracle on-premise, así que el espejo nunca se llena y ERP/CRM quedan sin datos. Cambia a "Job programado" o "Herramienta de terceros".']);
+    if(p.dfDown) o.push(['crit','Pub/Sub absorbe la caída','Con Dataflow detenido, nada se pierde: Pub/Sub retiene hasta 7 días. Pero el backlog crece a '+fN(s.ing)+' msg/s y, al volver, el autoscaling deberá sumar workers para ponerse al día.']);
+    else if(s.psWait>30) o.push(['warn','La capacidad no alcanza a la entrada','Dataflow procesa '+fN(s.out)+' msg/s con '+s.w+' workers. '+(s.target>=p.dfMax?'El autoscaling llegó al tope de '+p.dfMax+' workers: súbelo o mejora la capacidad por worker.':'El autoscaling ya pidió más workers, pero tardan ~1 min en arrancar.')]);
+    if(s.backpressure) o.push(['crit','Bigtable frena todo el pipeline','Como las etapas de Dataflow están encadenadas, un destino lento (Bigtable saturado) reduce el ritmo de todo el job y el atraso aparece en Pub/Sub.']);
+    if(p.btKey==='ts_dev') o.push(['crit','Clave con timestamp al inicio','Todas las escrituras recientes caen en el mismo rango de claves, o sea en un solo nodo. Es el anti-patrón clásico de Bigtable.']);
+    else if(s.hot>75) o.push([s.hot>100?'crit':'warn','Hotspot por concentración de tráfico','Con '+p.skew+' % del tráfico en 5 turbinas, un nodo recibe '+NF.format(s.hot)+' % de su capacidad. '+(p.btKey==='salt'?'':'Agregar nodos ayuda poco: prueba la clave con prefijo hash (salting).')]);
+    if(p.btKey==='rev') o.push(['info','Timestamp invertido','Hace que lo más reciente aparezca primero al leer una turbina, útil para la sala de control. No cambia cómo se reparten las escrituras entre nodos.']);
+    if(s.dropF>0.005) o.push(['warn','Se descartan datos tardíos',fPct(s.dropF*100)+' de los registros llega después de cerrada la ventana + tolerancia de '+p.lateness+' s y no entra a los agregados de BigQuery (sí queda en Bronze). Sube la tolerancia o revisa la conectividad de las turbinas.']);
+    if(s.schemaT>s.t) o.push(['crit','Cambio de esquema en producción','Un firmware nuevo envía campos distintos. Los mensajes van al Dead-letter topic: no se pierden, pero el monitoreo queda ciego para esas turbinas hasta versionar el esquema AVRO.']);
+    if(s.v>=25) o.push(['info','Paradoja de la tormenta','Las turbinas no generan (corte a 25 m/s), pero la plataforma recibe <i>más</i> datos: alarmas, cambios de estado y logs.']);
+    if(p.fmt==='json') o.push(['info','JSON en vez de Protobuf','Cada mensaje pesa ~3,6 veces más: más ancho de banda, más costo de Pub/Sub y más almacenamiento, sin ganar información.']);
+    if(p.rbe) o.push(['ok','Reporte por excepción','Con viento estable se envía solo lo que cambia. El tráfico sube automáticamente cuando hay turbulencia o tormenta.']);
+    if(p.logLvl==='DEBUG') o.push(['warn','Logs en DEBUG','Publicar todo multiplica el volumen de logs ~40 veces respecto de WARN y satura Cloud Functions.']);
+    if(!p.bqPart) o.push(['warn','Tabla sin particionar','Cada consulta de tablero recorre toda la historia ('+NF.format(p.hist)+' días). Costo y latencia crecen con el tiempo.']);
+    if(p.bronzeClass!=='standard' && p.silverReads>=2) o.push(['warn','Coldline/Nearline con lecturas frecuentes','Reconstruir Silver desde Bronze '+p.silverReads+' veces al mes paga recuperación cada vez. Coldline conviene solo si casi no se lee.']);
+    if(p.pbiMode==='imp') o.push(['info','Power BI en Import','Menos carga sobre BigQuery, pero los datos tienen en promedio '+fT(p.pbiRefresh*30)+' de antigüedad.']);
+    if(p.pbiMode==='loc') o.push(['info','Power BI sobre la base local','La frescura depende de la réplica ('+fT(s.repFresh)+'). Útil si el reporte debe cruzarse con datos del ERP.']);
+    if(s.tunUp>0&&s.tunUp<s.tun) o.push(['ok','La alta disponibilidad funciona','Cayó un túnel, pero el otro sostiene la réplica sin interrupción.']);
+    if(s.tunUp===0) o.push(['crit','Sin conectividad on-premise','Las filas se acumulan en la cola de réplica y el espejo envejece. '+(p.vpnHA?'':'Sin VPN HA basta una falla para cortar el enlace.')]);
+    if(!o.length) o.push(['ok','Sistema estable','La capacidad supera la entrada en cada etapa. Prueba un escenario o mueve un control para ver cómo reacciona.']);
+    return o;
+  },
+  extra(s,p,box){ costBars(box,s.costs); }
+};
+
+/* ============================================================
+   ESQUEMA 2 · Portal ABO Energy (Pub/Sub como eje central)
+   ============================================================ */
+const SIM2={
+  id:'portal',
+  title:'Esquema 2 · Portal de ABO Energy con Pub/Sub como eje central',
+  subtitle:'Usuarios → portal en GKE → Pub/Sub → analítica · réplica a legados · IA (RAG)',
+  vb:[1200,620],
+  zones:[
+    {x:10,y:34,w:490,h:248,c:'--z1',t:'1 · INTERACCIÓN CON USUARIOS'},
+    {x:625,y:34,w:568,h:166,c:'--z3',t:'2 · DATA LAKE Y BI'},
+    {x:625,y:210,w:568,h:172,c:'--z4',t:'3 · RÉPLICA A BASES LEGADAS'},
+    {x:315,y:394,w:878,h:216,c:'--z2',t:'4 · BASE DE CONOCIMIENTO, IA Y RAG'}
+  ],
+  nodes:[
+    {id:'users',x:25,y:75,l:'Usuarios',s:'clientes y empleados',info:'Clientes, comunidades y empleados que consultan sobre generación, contratos, mantenimiento o facturación, y suben documentos.'},
+    {id:'lb',x:185,y:75,l:'Cloud Load Balancing',s:'entrada HTTPS',info:'Reparte el tráfico de Internet hacia los pods del portal.'},
+    {id:'gke',x:345,y:75,l:'GKE · Portal',s:'microservicios',info:'Lógica del portal. El Horizontal Pod Autoscaler (HPA) agrega pods según la carga; cada pod nuevo tarda ~30 s en estar listo.'},
+    {id:'rmq',x:345,y:190,l:'RabbitMQ',s:'colas internas',info:'Broker interno del portal.',fix:'El diseño original tenía RabbitMQ y Pub/Sub sin roles definidos. Regla corregida: <b>RabbitMQ</b> para trabajo interno del portal (tareas, notificaciones, RPC entre microservicios, baja latencia) y <b>Pub/Sub</b> para eventos de negocio que consumen otros sistemas (analítica, réplica, IA). Puedes comparar las tres opciones.'},
+    {id:'upb',x:185,y:190,l:'Cloud Storage',s:'bucket de subida',info:'Documentos e imágenes que suben los usuarios.',fix:'La flecha original iba del bucket al clúster. Lo correcto es que el usuario sube a través del portal (o con una URL firmada) y el archivo se guarda en el bucket: portal → bucket.'},
+    {id:'ps',x:345,y:315,l:'Cloud Pub/Sub',s:'eje central de eventos',info:'Cada evento se publica una vez y tres suscripciones lo reciben de forma independiente: analítica, réplica e IA. Si una se atrasa, las otras no se enteran. La entrega es "al menos una vez": puede haber reenvíos.'},
+    {id:'lake',x:640,y:85,l:'Data Lake',s:'Cloud Storage',info:'Eventos crudos para analítica.'},
+    {id:'bq',x:800,y:85,l:'BigQuery',s:'data warehouse',info:'Recibe la carga estructurada desde el lake y los insights de la IA.'},
+    {id:'lks',x:960,y:85,l:'Looker Studio',s:'usuarios de negocio',info:'Tableros para el negocio. Su frescura depende de cómo se carga BigQuery (streaming o por lotes).'},
+    {id:'cdc',x:640,y:270,l:'GKE · suscriptor',s:'réplica de eventos',info:'Consume eventos de Pub/Sub y los aplica en las bases legadas.',fix:'El diagrama lo llamaba "CDC". CDC captura cambios <i>desde</i> una base de datos; aquí los datos van <i>hacia</i> Oracle e Informix, así que es <b>replicación de eventos</b>. Como Pub/Sub puede reenviar, el suscriptor debe ser <b>idempotente</b> (aplicar dos veces el mismo evento no debe duplicar).'},
+    {id:'ora',x:820,y:240,l:'Oracle',s:'destino legado',info:'Base heredada que se mantiene al día con la plataforma nueva.'},
+    {id:'inf',x:820,y:312,l:'Informix',s:'destino legado',info:'Base heredada más lenta; un cuello de botella típico.'},
+    {id:'ai',x:330,y:470,l:'Aplicación IA',s:'GKE / Cloud Run',info:'Orquesta el RAG: embebe la pregunta, recupera contexto, llama a Gemini y guarda el resultado.'},
+    {id:'emb',x:500,y:420,l:'Vertex AI Embeddings',s:'vectoriza la pregunta',info:'Convierte la pregunta en un vector para buscar por significado.'},
+    {id:'gem',x:500,y:530,l:'Vertex AI Gemini',s:'genera la respuesta',info:'Modelo que redacta la respuesta usando el contexto recuperado. Más contexto (top-k × tamaño de fragmento) = más tokens, más costo y más latencia.'},
+    {id:'vs',x:680,y:420,l:'Vertex AI Search',s:'búsqueda gestionada',info:'Buscador semántico gestionado sobre documentos.'},
+    {id:'pg',x:680,y:530,l:'Cloud SQL pgvector',s:'base de conocimiento',info:'PostgreSQL con búsqueda vectorial. Rápido para colecciones acotadas (FAQ, metadatos, fichas); su capacidad depende de las vCPU.',fix:'El diseño usaba Vertex AI Search y pgvector sin regla. Opción corregida "Híbrido con regla": pgvector para FAQ/metadatos estructurados y Vertex AI Search para documentos largos. Se eliminó la flecha Firestore → Cloud SQL, que no tenía un flujo claro.'},
+    {id:'fsr',x:860,y:475,l:'Firestore',s:'resultados y caché',info:'Historial de consultas y caché de respuestas. Una respuesta cacheada evita todo el RAG.'},
+    {id:'bqo',x:1030,y:475,l:'BigQuery telemetría',s:'datos del Esquema 1',info:'Para preguntas operativas ("¿cuánto generó la turbina 12 ayer?") la IA consulta la capa Gold del pipeline de telemetría. Es el punto de unión entre los esquemas 1 y 2.'}
+  ],
+  edges:[
+    {id:'a1',f:'users',t:'lb',k:'query'},{id:'a2',f:'lb',t:'gke',k:'query'},{id:'a3',f:'gke',t:'upb',k:'doc'},
+    {id:'a4',f:'gke',t:'rmq',k:'query'},{id:'a5',f:'gke',t:'ps',k:'data',bend:'right'},{id:'a5b',f:'rmq',t:'ps',k:'data'},
+    {id:'a6',f:'ps',t:'lake',k:'data'},{id:'a7',f:'lake',t:'bq',k:'data'},{id:'a8',f:'bq',t:'lks',k:'query'},
+    {id:'a9',f:'ps',t:'cdc',k:'repl'},{id:'a10',f:'cdc',t:'ora',k:'repl'},{id:'a11',f:'cdc',t:'inf',k:'repl'},
+    {id:'a12',f:'ps',t:'ai',k:'query'},{id:'a13',f:'ai',t:'emb',k:'embed'},{id:'a14',f:'ai',t:'vs',k:'query'},{id:'a15',f:'ai',t:'pg',k:'query'},
+    {id:'a16',f:'ai',t:'gem',k:'query'},{id:'a17',f:'ai',t:'fsr',k:'data',bend:'bottom'},{id:'a18',f:'fsr',t:'bq',k:'data'},{id:'a19',f:'fsr',t:'bqo',k:'query'}
+  ],
+  controls:[
+    {g:'Demanda',open:true,items:[
+      R('users','Usuarios concurrentes',10,5000,10,300,'usr',''),
+      R('qpm','Interacciones por usuario',0.1,5,0.1,0.5,'/min',''),
+      R('upPct','Interacciones con documento',0,60,1,10,'%','Suben un archivo (contrato, factura, foto).'),
+      R('docMB','Tamaño medio del archivo',0.1,50,0.1,3,'MB','')
+    ]},
+    {g:'Portal en GKE',items:[
+      T('hpa','Autoscaling de pods (HPA)',true,''),
+      R('podsMin','Pods mínimos (o fijos)',1,50,1,3,'pods',''),
+      R('podsMax','Pods máximos',1,200,1,30,'pods',''),
+      R('podCap','Capacidad por pod',5,200,5,40,'req/s','')
+    ]},
+    {g:'Mensajería (decisión de diseño)',open:true,items:[
+      S('msg','Rol de RabbitMQ y Pub/Sub',[['fixed','Corregido: RabbitMQ interno, Pub/Sub para eventos'],['orig','Original: todo pasa por ambos, sin roles'],['pubsub','Solo Pub/Sub (sin RabbitMQ)']],'fixed',''),
+      R('rmqCap','Capacidad de RabbitMQ',200,20000,100,3000,'msg/s','')
+    ]},
+    {g:'IA y RAG (decisiones)',open:true,items:[
+      S('retr','Mecanismo de recuperación',[['hybrid','Híbrido con regla (corregido)'],['vs','Solo Vertex AI Search'],['pg','Solo pgvector'],['both','Ambos sin regla (original)']],'hybrid',''),
+      R('vsQPS','Cuota de Vertex AI Search',10,1000,10,100,'q/s',''),
+      R('sqlVcpu','vCPU de Cloud SQL (pgvector)',1,64,1,4,'vCPU','~25 consultas vectoriales/s por vCPU.'),
+      R('topK','Fragmentos recuperados (top-k)',1,30,1,8,'',''),
+      R('chunkTok','Tamaño de fragmento',100,2000,50,500,'tokens',''),
+      S('model','Modelo Gemini',[['flash','Flash (rápido, económico)'],['pro','Pro (más calidad, más lento)']],'flash',''),
+      R('gemRPM','Cuota de Gemini',60,10000,60,600,'req/min','Si la demanda la supera, las solicitudes esperan o fallan (429).'),
+      R('cache','Aciertos de caché (Firestore)',0,80,1,20,'%','Preguntas repetidas que se responden sin RAG.'),
+      R('opsPct','Preguntas sobre datos operativos',0,100,1,15,'%','Requieren consultar BigQuery de telemetría (Esquema 1).')
+    ]},
+    {g:'Réplica a bases legadas',items:[
+      R('replPct','Eventos que necesitan los legados',0,100,1,60,'%',''),
+      R('oraTPS','Capacidad de Oracle',10,3000,10,500,'ev/s',''),
+      R('infTPS','Capacidad de Informix',10,2000,10,150,'ev/s',''),
+      T('infDown','Informix en mantenimiento',false,''),
+      T('idem','Suscriptor idempotente',true,'Si está apagado, cada reenvío de Pub/Sub se aplica dos veces.')
+    ]},
+    {g:'Analítica',items:[
+      S('lake','Carga a BigQuery',[['stream','Streaming'],['batch','Por lotes']],'stream',''),
+      R('lakeInt','Intervalo de lote',5,1440,5,60,'min','')
+    ]},
+    {g:'Supuestos de precios (USD, ilustrativos)',items:[
+      R('podH','Pod por hora',0.01,0.5,0.01,0.08,'$/h',''),
+      R('gemIn','Gemini entrada (Flash)',0.05,5,0.05,0.3,'$/M tok','Pro se calcula ×4.'),
+      R('gemOut','Gemini salida (Flash)',0.2,20,0.1,2.5,'$/M tok','Pro se calcula ×4.'),
+      R('vsK','Vertex AI Search',0.5,10,0.5,4,'$/1000 q',''),
+      R('vcpuH','vCPU Cloud SQL por hora',0.01,0.2,0.005,0.05,'$/h','')
+    ]}
+  ],
+  events:[
+    {id:'spike',label:'📈 Corte de suministro: consultas ×10 por 5 min',help:'Muchos clientes preguntan a la vez.'},
+    {id:'backlog',label:'🗂 Informix se detiene 10 min',help:'Mantenimiento no planificado.'}
+  ],
+  presets:[
+    {n:'Operación normal',d:'Diseño corregido con demanda moderada.',set:{}},
+    {n:'Diseño original',d:'RabbitMQ y Pub/Sub en serie, dos recuperadores sin regla, sin idempotencia.',set:{msg:'orig',retr:'both',idem:false}},
+    {n:'Corte de suministro',d:'1.500 usuarios preguntando a la vez. ¿Aguanta la cuota de Gemini?',set:{users:1500,qpm:1.2,cache:10}},
+    {n:'Ahorro',d:'Flash, caché alta, solo pgvector, top-k bajo.',set:{model:'flash',cache:45,retr:'pg',topK:4}},
+    {n:'Máxima calidad',d:'Pro, recuperación híbrida, top-k 10.',set:{model:'pro',retr:'hybrid',topK:10,gemRPM:1200}},
+    {n:'Legado frágil',d:'Informix lento y sin idempotencia: observa los duplicados.',set:{infTPS:60,idem:false,users:800}}
+  ],
+  warm(s){ s.pods=s.podT; s.qG=0; s.pUp=0; },
+  init(s,p){ s.pods=p.podsMin; s.pUp=0; s.pDn=0; s.dups=0; s.spikeT=-1; s.infStopT=-1; },
+  onEvent(id,s){ if(id==='spike'){ s.spikeT=s.t+300; s.log('warn','Pico de consultas ×10 por corte de suministro.'); }
+    if(id==='backlog'){ s.infStopT=s.t+600; s.log('crit','Informix detenido por 10 minutos.'); } },
+  step(s,p,dt){
+    const t=s.t, spike=s.spikeT>t?10:1;
+    const reqs=p.users*p.qpm/60*spike*(1+0.15*Math.sin(t/40)), ups=reqs*p.upPct/100, load=reqs+ups;
+    s.reqs=reqs;
+    const target=p.hpa? clamp(Math.ceil(load/(p.podCap*0.7)),p.podsMin,Math.max(p.podsMin,p.podsMax)) : p.podsMin; s.podT=target;
+    if(target>s.pods){ s.pUp+=dt; if(s.pUp>=30){ s.log('info','HPA: pods '+s.pods+' → '+target+'.'); s.pods=target; s.pUp=0; } } else s.pUp=0;
+    if(target<s.pods){ s.pDn+=dt; if(s.pDn>=180){ s.pods=Math.max(target,s.pods-Math.ceil((s.pods-target)/2)); s.pDn=0; } } else s.pDn=0;
+    const gke=Q(s,'qG',load,s.pods*p.podCap,dt); s.gkeWait=gke.wait;
+    const served=gke.out, qOut=served*(load>0?reqs/load:0);
+    s.served=qOut;
+    let psIn, msgLat, rU=0, dupF=0;
+    if(p.msg==='orig'){ const r=Q(s,'qR',served,p.rmqCap*0.8,dt); psIn=r.out*1.06; dupF=0.06; msgLat=0.04+r.wait; rU=r.util; }
+    else if(p.msg==='fixed'){ const r=Q(s,'qR',served*0.6,p.rmqCap,dt); psIn=served; msgLat=0.015; rU=r.util; }
+    else { s.qR=0; psIn=served; msgLat=0.05; }
+    s.rU=rU; s.qRv=s.qR||0; s.dupF=dupF;
+    const qEv=psIn*(load>0?reqs/load:0);
+    // IA
+    const cacheF=p.cache/100, work=qEv*(1-cacheF);
+    const pgLat=0.04+p.topK*0.006, pgCap=p.sqlVcpu*25, vsLat=0.35, vsCap=p.vsQPS;
+    let rl,rc;
+    if(p.retr==='vs'){rl=vsLat;rc=vsCap;} else if(p.retr==='pg'){rl=pgLat;rc=pgCap;}
+    else if(p.retr==='both'){rl=Math.max(pgLat,vsLat)+0.05;rc=Math.min(pgCap,vsCap);} else {rl=0.4*pgLat+0.6*vsLat;rc=Math.min(pgCap/0.4,vsCap/0.6);}
+    const M=p.model==='pro'?{ttft:1.1,tps:80,inS:30000,q:80}:{ttft:0.35,tps:200,inS:90000,q:70};
+    const tin=400+p.topK*p.chunkTok, tout=350;
+    const gl=M.ttft+tin/M.inS+tout/M.tps, gemCap=p.gemRPM/60;
+    const cap=Math.min(rc,gemCap); s.aiCap=cap; s.bottleneck=rc<gemCap?'recuperación':'cuota de Gemini';
+    const ai=Q(s,'qAI',work,cap,dt);
+    let rej=0; if(s.qAI>cap*30){ rej=(s.qAI-cap*30)/dt; s.qAI=cap*30; }
+    s.rejF=work>0? rej/work:0;
+    const base=0.05+gke.wait+0.03+msgLat+0.08+0.08, opsLat=p.opsPct/100*1.8;
+    const full=base+rl+gl+opsLat+Math.min(ai.wait,30);
+    s.p50=cacheF*(base+0.03)+(1-cacheF)*full; s.p95=full*1.45+Math.min(ai.wait,30)*0.3;
+    s.qAIv=s.qAI||0;
+    s.quality=clamp(M.q+{vs:10,pg:6,both:10,hybrid:13}[p.retr]+Math.min(p.topK,8)*1.2-Math.max(0,p.topK-12)*1.5-(p.chunkTok>1500?6:p.chunkTok<200?5:0)-cacheF*3,0,100);
+    // Réplica
+    const rIn=psIn*p.replPct/100; s.rIn=rIn;
+    const infCap=(p.infDown||s.infStopT>t)?0:p.infTPS;
+    const o=Q(s,'qO',rIn,p.oraTPS,dt), i=Q(s,'qI',rIn,infCap,dt);
+    s.lagO=o.wait; s.lagI=i.wait;
+    const redel=(lag)=> lag>60? Math.min(0.5,(lag-60)/600):0;
+    const rd=rIn*(redel(o.wait)+redel(i.wait))+rIn*dupF;
+    s.redelivery=rd; if(!p.idem) s.dups+=rd*dt;
+    // Analítica
+    s.lakeFresh=p.lake==='stream'?10:p.lakeInt*30+60;
+    // Costos
+    const H=730, sec=2.628e6, mult=p.model==='pro'?4:1, c={};
+    c['Pods GKE']=s.pods*H*p.podH+ (p.msg!=='pubsub'?3*H*p.podH:0);
+    c['Gemini']=ai.out*sec*(tin*p.gemIn*mult+tout*p.gemOut*mult)/1e6;
+    const vsShare={vs:1,pg:0,both:1,hybrid:0.6}[p.retr];
+    c['Vertex AI Search']=ai.out*sec*vsShare*p.vsK/1000;
+    c['Cloud SQL pgvector']=({pg:1,both:1,hybrid:1,vs:0}[p.retr])*p.sqlVcpu*H*p.vcpuH;
+    c['Pub/Sub + Firestore']=psIn*sec*3*2e-7+qEv*sec*1e-6;
+    c['BigQuery (operativas)']=work*p.opsPct/100*sec*0.05/1024*6.25;
+    s.costs=c; s.cost=Object.values(c).reduce((a,b)=>a+b,0);
+    s.cpk=reqs>0? s.cost/(reqs*sec/1000):0;
+    // Diagrama
+    const N=s.N={},E=s.E={},X=s.X={};
+    const lvl=(u,w)=> u>1.02||w>20?'crit':u>0.85||w>3?'warn':'ok';
+    N.users={u:clamp(reqs/200,0,1),st:spike>1?'warn':'ok',v:NF1.format(reqs)+' interacc./s',b:spike>1?'📈 pico':''};
+    N.lb={u:0.3,st:'ok',v:NF1.format(load)+' req/s'};
+    N.gke={u:gke.util,st:lvl(gke.util,gke.wait),v:s.pods+' pods (obj. '+target+') · '+fT(gke.wait)+' cola',b:s.pUp>0?'↑':''};
+    N.rmq=p.msg==='pubsub'?{u:0,st:'off',v:'no se usa'}:{u:rU,st:lvl(rU,0),v:(p.msg==='orig'?'en ruta crítica · ':'tareas internas · ')+'cola '+fN(s.qR)};
+    N.upb={u:clamp(ups*p.docMB/50,0,1),st:'ok',v:NF1.format(ups*p.docMB)+' MB/s'};
+    N.ps={u:0.4,st:'ok',v:NF1.format(psIn)+' ev/s × 3 suscripciones',b:dupF>0?'⚠ dup.':''};
+    N.lake={u:0.3,st:'ok',v:NF1.format(psIn)+' ev/s'};
+    N.bq={u:0.3,st:'ok',v:p.lake==='stream'?'streaming':'lotes c/'+p.lakeInt+' min'};
+    N.lks={u:0.3,st:s.lakeFresh>3600?'warn':'ok',v:'frescura '+fT(s.lakeFresh)};
+    N.cdc={u:clamp(rIn/3000,0,1),st:(!p.idem&&rd>0.01)?'warn':'ok',v:NF1.format(rIn)+' ev/s'+(p.idem?' · idempotente':' · sin idempotencia')};
+    N.ora={u:o.util,st:lvl(o.util,o.wait/10),v:'retraso '+fT(o.wait)};
+    N.inf={u:infCap?i.util:1.2,st:infCap===0?'crit':lvl(i.util,i.wait/10),v:'retraso '+fT(i.wait),b:infCap===0?'✕ detenido':''};
+    N.ai={u:ai.util,st:lvl(ai.util,ai.wait),v:NF1.format(ai.out)+' q/s · cola '+fN(s.qAI)+(s.rejF>0.01?' · rechazos':''),b:s.rejF>0.01?'✕ 429':''};
+    N.emb={u:0.3,st:'ok',v:NF1.format(ai.out)+' q/s'};
+    const vsOn=p.retr!=='pg', pgOn=p.retr!=='vs';
+    N.vs=vsOn?{u:clamp(ai.out*vsShare/vsCap,0,1.2),st:lvl(ai.out*vsShare/vsCap,0),v:fT(vsLat)+' · cuota '+vsCap+' q/s'}:{u:0,st:'off',v:'no se usa'};
+    const pgShare={pg:1,both:1,hybrid:0.4,vs:0}[p.retr];
+    N.pg=pgOn?{u:clamp(ai.out*pgShare/pgCap,0,1.2),st:lvl(ai.out*pgShare/pgCap,0),v:fT(pgLat)+' · '+p.sqlVcpu+' vCPU'}:{u:0,st:'off',v:'no se usa'};
+    N.gem={u:clamp(ai.out/gemCap,0,1.2),st:lvl(ai.out/gemCap,0),v:fT(gl)+' · '+fN(tin)+' tok entrada',s:p.model==='pro'?'Gemini Pro':'Gemini Flash'};
+    N.fsr={u:0.3,st:'ok',v:'caché '+p.cache+' % aciertos'};
+    N.bqo={u:clamp(p.opsPct/100,0,1),st:'ok',v:NF1.format(work*p.opsPct/100)+' consultas SQL/s'};
+    E.a1=load;E.a2=load;E.a3=ups;E.a4=p.msg==='pubsub'?0:served*(p.msg==='orig'?1:0.6);
+    E.a5=p.msg==='orig'?0:psIn;E.a5b=p.msg==='orig'?psIn:0;E.a6=psIn;E.a7=psIn;E.a8=0.5;E.a9=rIn;E.a10=o.out;E.a11=i.out;E.a12=qEv;
+    E.a13=ai.out;E.a14=vsOn?ai.out*vsShare:0;E.a15=pgOn?ai.out*pgShare:0;E.a16=ai.out;E.a17=qEv;E.a18=qEv*0.5;E.a19=work*p.opsPct/100;
+    if(p.msg==='orig') X.a5='off'; else X.a5b='off';
+    if(p.msg==='pubsub'){X.a4='off';}
+    if(!vsOn) X.a14='off'; if(!pgOn) X.a15='off';
+    if(infCap===0) X.a11='invalid';
+    flag(s,'rej',s.rejF>0.01,'crit','La IA rechaza solicitudes: se superó la capacidad ('+s.bottleneck+').','La IA vuelve a atender todas las solicitudes.');
+    flag(s,'infd',infCap===0,'crit','Informix no acepta escrituras: el retraso crece.','Informix vuelve a recibir eventos.');
+    flag(s,'dups',!p.idem&&rd>0.05,'crit','Pub/Sub reenvía eventos no confirmados y el suscriptor los aplica dos veces.',null);
+    flag(s,'gke',gke.wait>2,'warn','Los pods del portal están saturados.','El portal se recuperó.');
+  },
+  sample(s){return {p95:Math.min(s.p95,120),reqs:s.reqs,served:s.served,lagO:Math.min(s.lagO,36000),lagI:Math.min(s.lagI,36000),qR:s.qRv,qAI:s.qAIv};},
+  kpis:[
+    {l:'Interacciones',v:s=>NF1.format(s.reqs)+' /s',sub:s=>s.pods+' pods en GKE (obj. '+s.podT+')'},
+    {l:'Respuesta IA (p95)',v:s=>fT(s.p95),sub:s=>'mediana '+fT(s.p50),st:s=>s.p95>15?'crit':s.p95>6?'warn':'ok'},
+    {l:'Rechazos (429 / timeout)',v:s=>fPct(s.rejF*100),sub:s=>'cuello: '+s.bottleneck,st:s=>s.rejF>0.05?'crit':s.rejF>0.005?'warn':'ok'},
+    {l:'Cola RabbitMQ',v:(s,p)=>p.msg==='pubsub'?'—':fN(s.qRv)+' msgs',sub:(s,p)=>({orig:'en la ruta crítica',fixed:'solo trabajo interno',pubsub:'eliminado'})[p.msg],st:s=>s.qRv>5000?'crit':s.qRv>500?'warn':'ok'},
+    {l:'Retraso en Oracle',v:s=>fT(s.lagO),sub:s=>NF1.format(s.rIn)+' ev/s a replicar',st:s=>s.lagO>300?'crit':s.lagO>30?'warn':'ok'},
+    {l:'Retraso en Informix',v:s=>fT(s.lagI),sub:()=>'destino más lento',st:s=>s.lagI>300?'crit':s.lagI>30?'warn':'ok'},
+    {l:'Duplicados aplicados',v:s=>fN(s.dups),sub:(s,p)=>p.idem?'suscriptor idempotente':'sin idempotencia',st:s=>s.dups>100?'crit':s.dups>0?'warn':'ok'},
+    {l:'Índice de calidad RAG',v:s=>NF.format(s.quality)+' / 100',sub:()=>'proxy didáctico'},
+    {l:'Frescura Looker Studio',v:s=>fT(s.lakeFresh),sub:(s,p)=>p.lake==='stream'?'streaming':'por lotes'},
+    {l:'Costo por 1.000 interacciones',v:s=>'US$ '+NF2.format(s.cpk),sub:s=>fUSD(s.cost)+' al mes'}
+  ],
+  charts:[
+    {t:'Respuesta de la IA (p95)',u:'segundos',k:[['p95','p95','--s1']],f:fT},
+    {t:'Interacciones vs. atendidas',u:'por segundo',k:[['reqs','Llegan','--s1'],['served','Atendidas por el portal','--s2']],f:fN},
+    {t:'Retraso de la réplica',u:'segundos',k:[['lagO','Oracle','--s1'],['lagI','Informix','--s2']],f:fT},
+    {t:'Colas',u:'mensajes',k:[['qR','RabbitMQ','--s1'],['qAI','Cola de la IA','--s2']],f:fN}
+  ],
+  insights(s,p){
+    const o=[];
+    if(p.msg==='orig') o.push(['warn','Dos sistemas de mensajería en serie','Cada interacción pasa por RabbitMQ y luego por Pub/Sub: suma latencia, duplica operación y genera ~6 % de eventos duplicados por doble publicación. Si RabbitMQ se satura, todo se frena.']);
+    if(p.msg==='fixed') o.push(['ok','Roles claros','RabbitMQ atiende el trabajo interno del portal; Pub/Sub distribuye eventos de negocio. Si RabbitMQ se atrasa, analítica, réplica e IA no se enteran.']);
+    if(p.msg==='pubsub') o.push(['info','Solo Pub/Sub','Menos piezas que operar, a cambio de ~50 ms más por tarea interna. Razonable si el portal no necesita RPC de baja latencia.']);
+    if(p.retr==='both') o.push(['warn','Dos recuperadores sin regla','Cada pregunta consulta Vertex AI Search y pgvector: se paga dos veces, la latencia es la del más lento y no está claro qué resultado prevalece.']);
+    if(p.retr==='hybrid') o.push(['ok','Recuperación híbrida con regla','pgvector responde rápido las preguntas de FAQ/metadatos (~40 %) y Vertex AI Search las de documentos. Mejor calidad sin pagar doble.']);
+    if(s.rejF>0.005) o.push(['crit','Capacidad de IA superada','Llegan '+NF1.format(s.reqs*(1-p.cache/100))+' preguntas/s y la capacidad es '+NF1.format(s.aiCap)+' q/s (límite: '+s.bottleneck+'). Opciones: subir cuota, aumentar caché o reducir top-k.']);
+    if(s.lagI>60||s.lagO>60) o.push(['warn','La réplica se atrasa','Pub/Sub guarda los eventos, así que no se pierden; pero pasado el plazo de confirmación los reenvía. '+(p.idem?'El suscriptor es idempotente, así que los reenvíos no duplican.':'Sin idempotencia, cada reenvío se aplica de nuevo: '+fN(s.dups)+' duplicados hasta ahora.')]);
+    if(p.topK>12) o.push(['info','Demasiado contexto','Con top-k '+p.topK+' el modelo recibe '+fN(400+p.topK*p.chunkTok)+' tokens: más costo y latencia, y el exceso de fragmentos suele meter ruido.']);
+    if(p.model==='pro') o.push(['info','Gemini Pro','Respuestas más elaboradas, pero ~3 veces más lentas y ~4 veces más caras que Flash en este modelo.']);
+    if(p.opsPct>0) o.push(['info','Unión con el Esquema 1',p.opsPct+' % de las preguntas consulta la telemetría en BigQuery (capa Gold). Si allá la tabla no está particionada, estas respuestas se vuelven lentas y caras.']);
+    if(!o.length) o.push(['ok','Sistema estable','']);
+    return o;
+  },
+  extra(s,p,box){ costBars(box,s.costs); }
+};
+
+/* ============================================================
+   ESQUEMA 3 · Documentos, imágenes y RAG (ABO Energy v2)
+   ============================================================ */
+const SIM3={
+  id:'documentos',
+  title:'Esquema 3 · Documentos, imágenes de inspección y RAG (versión corregida)',
+  subtitle:'Subida → agentes en Cloud Run → estado en Firestore → vectorización → búsqueda y Gemini → BI',
+  vb:[1200,630],
+  zones:[
+    {x:10,y:34,w:972,h:254,c:'--z1',t:'1 · INTERACCIÓN CON USUARIOS E INGESTA'},
+    {x:10,y:298,w:972,h:142,c:'--z2',t:'2 · PROCESAMIENTO Y VECTORIZACIÓN'},
+    {x:10,y:450,w:972,h:170,c:'--z3',t:'3 · BASE DE CONOCIMIENTO Y APLICACIÓN IA'},
+    {x:995,y:34,w:198,h:586,c:'--z5',t:'4 · BI Y ANALÍTICA'}
+  ],
+  nodes:[
+    {id:'users',x:25,y:70,l:'Usuarios',s:'técnicos, ingeniería',info:'Suben informes de mantenimiento, manuales del fabricante, permisos y fotos de inspección (drones sobre palas), y hacen preguntas.'},
+    {id:'lb',x:185,y:70,l:'Cloud Load Balancing',s:'subidas y consultas',info:'Entrada única desde Internet.'},
+    {id:'upl',x:345,y:70,l:'Upload Bucket',s:'archivos crudos',info:'Cloud Storage con los archivos originales. Cada archivo nuevo emite una notificación de evento.'},
+    {id:'cr',x:505,y:70,l:'Cloud Run',s:'orquestador por evento',info:'Recibe la notificación y reparte el trabajo a los agentes. Capacidad = instancias máximas × concurrencia por instancia. Con mínimo 0 instancias hay "arranques en frío".'},
+    {id:'dag',x:665,y:48,l:'Agente documentos',s:'texto y metadatos',info:'Extrae texto (OCR si es escaneado), tablas y metadatos de cada página.'},
+    {id:'iag',x:665,y:128,l:'Agente imágenes',s:'análisis visual',info:'Analiza fotos de inspección: detecta erosión del borde de ataque, grietas, impactos de rayo, y genera una descripción.'},
+    {id:'stg',x:825,y:88,l:'Staging Bucket',s:'resultados intermedios',info:'Salida de los agentes antes de consolidarse.',fix:'En el original había dos buckets con el mismo nombre "Upload Bucket". El segundo, donde escriben los agentes, pasa a ser <b>Staging Bucket</b>.'},
+    {id:'ext',x:25,y:205,l:'Fuentes externas',s:'SCADA, mercado, clima',info:'Sistemas que publican mensajes para la aplicación de IA (por ejemplo, avisos de telemetría del Esquema 1).'},
+    {id:'psq',x:185,y:205,l:'Pub/Sub',s:'topic AI App Query',info:'Recibe consultas de usuarios y mensajes externos y los entrega a la aplicación de IA.'},
+    {id:'fst',x:505,y:205,l:'Firestore',s:'estado de procesamiento',info:'Máquina de estados por archivo: subido → procesando → listo para vectorizar → indexado (o error). Permite saber en todo momento qué falta.'},
+    {id:'psv',x:665,y:220,l:'Pub/Sub',s:'topic Vectorización',info:'Cola de trabajos de vectorización. Desacopla el procesamiento de la generación de embeddings, que tiene cuota propia.',fix:'Etiqueta corregida: "Put ssage" → <b>Put Message</b>.'},
+    {id:'pdl',x:825,y:205,l:'Processed Data Lake',s:'Cloud Storage',info:'Texto, metadatos y descripciones ya procesados.'},
+    {id:'vsx',x:345,y:350,l:'Vertex AI Vector Search',s:'índice a gran escala',info:'Índice vectorial gestionado para millones de vectores con baja latencia.'},
+    {id:'pg',x:505,y:350,l:'Cloud SQL pgvector',s:'knowledge base',info:'PostgreSQL con vectores. Cómodo para unir vectores con datos relacionales (turbina, fecha, componente).',fix:'Escribir en dos índices a la vez exige mantenerlos sincronizados. El simulador muestra cuántos vectores están en uno y no en el otro; la alternativa es elegir un solo índice.'},
+    {id:'vag',x:665,y:350,l:'Agente vectorización',s:'Cloud Run Function',info:'Divide el texto en fragmentos (chunking), pide embeddings en lotes y escribe los vectores.'},
+    {id:'emb',x:825,y:350,l:'Vertex AI Embeddings',s:'texto e imagen',info:'Convierte fragmentos e imágenes en vectores. Tiene cuota de solicitudes por minuto; cada solicitud puede llevar un lote de textos.'},
+    {id:'app',x:185,y:520,l:'Aplicación IA',s:'LangChain · Cloud Run',info:'Recibe la pregunta, recupera fragmentos y llama a Gemini con ese contexto.'},
+    {id:'vse',x:345,y:520,l:'Vertex AI Search',s:'Discovery Engine',info:'Búsqueda vectorial + empresarial sobre el índice.'},
+    {id:'gem',x:505,y:520,l:'Vertex AI (Gemini)',s:'genera la respuesta',info:'Redacta la respuesta citando los documentos recuperados.',fix:'"PaLM/Gemini" se actualizó a <b>Vertex AI (Gemini)</b>: PaLM fue retirado.'},
+    {id:'fsq',x:665,y:520,l:'Firestore',s:'resultados de consultas',info:'Historial y caché de preguntas y respuestas.'},
+    {id:'adl',x:1025,y:80,l:'Analytics Data Lake',s:'Cloud Storage',info:'Datos procesados disponibles para analítica.',fix:'En el original era "S3 Data Lake" (AWS). En una arquitectura 100 % GCP es <b>Cloud Storage (Analytics Data Lake)</b>, consultado por BigLake.'},
+    {id:'blk',x:1025,y:190,l:'BigLake',s:'acceso unificado',info:'Permite consultar desde BigQuery los archivos del lake sin copiarlos.'},
+    {id:'bq',x:1025,y:300,l:'BigQuery',s:'data warehouse',info:'Métricas del proceso documental y de uso del asistente.'},
+    {id:'lks',x:1025,y:410,l:'Looker Studio',s:'usuarios de negocio',info:'Tableros: backlog de inspecciones, defectos por turbina, uso del asistente.'},
+    {id:'dmk',x:1025,y:530,l:'Data Market',s:'Cloud Storage',info:'Conjuntos de datos publicados para otras áreas.',fix:'En el original era "Amazon S3 (Data Miacket)". Se corrige a <b>Cloud Storage (Data Market)</b>.'}
+  ],
+  edges:[
+    {id:'b1',f:'users',t:'lb',k:'doc'},{id:'b2',f:'lb',t:'upl',k:'doc'},{id:'b3',f:'upl',t:'cr',k:'doc'},
+    {id:'b4',f:'cr',t:'dag',k:'doc'},{id:'b5',f:'cr',t:'iag',k:'image'},{id:'b6',f:'dag',t:'stg',k:'doc'},{id:'b7',f:'iag',t:'stg',k:'image'},
+    {id:'b8',f:'stg',t:'pdl',k:'data'},{id:'b9',f:'cr',t:'fst',k:'data'},{id:'b10',f:'fst',t:'psv',k:'embed'},{id:'b11',f:'psv',t:'vag',k:'embed'},
+    {id:'b12',f:'vag',t:'emb',k:'embed'},{id:'b13',f:'vag',t:'pg',k:'embed'},{id:'b14',f:'vag',t:'vsx',k:'embed',bend:'bottom'},
+    {id:'b15',f:'lb',t:'psq',k:'query'},{id:'b16',f:'ext',t:'psq',k:'data'},{id:'b17',f:'psq',t:'app',k:'query'},
+    {id:'b18',f:'app',t:'vse',k:'query'},{id:'b19',f:'vse',t:'vsx',k:'query'},{id:'b20',f:'app',t:'pg',k:'query',bend:'top2'},{id:'b21',f:'app',t:'gem',k:'query',bend:'bottom'},
+    {id:'b22',f:'app',t:'fsq',k:'data',bend:'bottom'},{id:'b23',f:'pdl',t:'adl',k:'data'},{id:'b24',f:'adl',t:'blk',k:'data'},{id:'b25',f:'blk',t:'bq',k:'data'},
+    {id:'b26',f:'bq',t:'lks',k:'query'},{id:'b27',f:'adl',t:'dmk',k:'data',bend:'right'},{id:'b28',f:'fsq',t:'bq',k:'data'}
+  ],
+  controls:[
+    {g:'Llegadas',open:true,items:[
+      R('docsH','Documentos por hora',0,3000,10,120,'doc/h',''),
+      R('pages','Páginas por documento',1,300,1,12,'pág.',''),
+      R('imgsH','Imágenes por hora',0,30000,50,600,'img/h','Fotos de inspección de palas, torres y subestación.'),
+      R('imgMB','Tamaño por imagen',0.5,40,0.5,8,'MB','')
+    ]},
+    {g:'Agentes en Cloud Run',open:true,items:[
+      R('crMax','Instancias máximas',1,300,1,20,'inst.',''),
+      R('crConc','Trabajos simultáneos por instancia',1,16,1,4,'',''),
+      R('crMin','Instancias mínimas (siempre encendidas)',0,20,1,0,'inst.','Con 0 hay arranques en frío.'),
+      R('docSec','Tiempo por página',0.1,5,0.1,0.8,'s',''),
+      R('imgSec','Tiempo por imagen',0.2,15,0.1,2.5,'s',''),
+      R('failPct','Archivos que fallan',0,30,0.5,2,'%','Escaneos ilegibles, formatos raros. Se reintentan.')
+    ]},
+    {g:'Vectorización (decisiones)',open:true,items:[
+      R('chunkTok','Tamaño de fragmento',100,2000,50,512,'tokens',''),
+      R('overlap','Solapamiento',0,50,1,10,'%',''),
+      R('embRPM','Cuota de embeddings',60,10000,60,1500,'req/min',''),
+      R('embBatch','Textos por solicitud (lote)',1,250,1,50,'',''),
+      S('vdest','Destino de los vectores',[['both','Ambos índices (como el diagrama)'],['vs','Solo Vertex AI Vector Search'],['pg','Solo pgvector']],'both',''),
+      R('pgVcpu','vCPU de Cloud SQL',1,64,1,4,'vCPU','~300 inserciones/s por vCPU.'),
+      T('quota','Cuota de embeddings agotada (429)',false,'')
+    ]},
+    {g:'Consultas RAG',items:[
+      R('ragQPM','Preguntas por minuto',0,600,1,30,'q/min',''),
+      R('topK','Fragmentos recuperados (top-k)',1,30,1,6,'',''),
+      S('model','Modelo Gemini',[['flash','Flash'],['pro','Pro']],'flash',''),
+      R('ext','Mensajes de fuentes externas',0,100,1,3,'msg/s','')
+    ]},
+    {g:'Supuestos de precios (USD, ilustrativos)',items:[
+      R('crVcpuH','vCPU Cloud Run por hora',0.02,0.3,0.01,0.09,'$/h',''),
+      R('embK','Embeddings por 1.000 textos',0.001,0.2,0.001,0.02,'$',''),
+      R('imgAn','Análisis por imagen (Gemini)',0.0001,0.02,0.0001,0.002,'$',''),
+      R('vsNodeH','Nodo Vector Search por hora',0.1,3,0.05,0.75,'$/h','')
+    ]}
+  ],
+  events:[
+    {id:'backfill',label:'📚 Carga histórica: 20.000 documentos',help:'Se digitaliza el archivo de mantenimiento de 10 años.'},
+    {id:'drone',label:'🚁 Campaña de drones: 15.000 fotos en 1 h',help:'Inspección anual de palas de todo el parque.'}
+  ],
+  presets:[
+    {n:'Operación normal',d:'Flujo diario de informes y fotos.',set:{}},
+    {n:'Campaña de inspección con drones',d:'Miles de imágenes por hora durante la campaña anual.',set:{imgsH:12000,crMax:60}},
+    {n:'Cuota de embeddings agotada',d:'Los documentos se procesan pero no llegan a ser consultables.',set:{quota:true}},
+    {n:'Un solo índice vectorial',d:'Sin doble escritura: no hay desincronización.',set:{vdest:'vs'}},
+    {n:'Fragmentos muy pequeños',d:'128 tokens con 30 % de solapamiento: muchos más embeddings.',set:{chunkTok:128,overlap:30,docsH:400}},
+    {n:'Sin arranques en frío',d:'3 instancias mínimas siempre encendidas.',set:{crMin:3}}
+  ],
+  init(s){ s.bfDocs=0; s.bfImgs=0; s.idxPG=0; s.idxVS=0; s.indexed=0; s.errors=0; s.arrived=0; },
+  onEvent(id,s){ if(id==='backfill'){ s.bfDocs+=20000; s.log('warn','Carga histórica: 20.000 documentos en cola de subida.'); }
+    if(id==='drone'){ s.bfImgs+=15000; s.bfImgRate=15000/3600; s.log('info','Campaña de drones: 15.000 fotos durante la próxima hora.'); } },
+  step(s,p,dt){
+    let docIn=p.docsH/3600, imgIn=p.imgsH/3600;
+    if(s.bfDocs>0){ const r=Math.min(s.bfDocs,8*dt); s.bfDocs-=r; docIn+=r/dt; }
+    if(s.bfImgs>0){ const r=Math.min(s.bfImgs,(s.bfImgRate||4)*dt); s.bfImgs-=r; imgIn+=r/dt; }
+    s.docIn=docIn; s.imgIn=imgIn; s.arrived+=(docIn+imgIn)*dt;
+    const fail=p.failPct/100;
+    const docWork=p.pages*p.docSec, imgWork=p.imgSec;
+    const W=(docIn*docWork+imgIn*imgWork)*(1+fail*0.5);
+    const cap=p.crMax*p.crConc;
+    const cr=Q(s,'qCR',W,cap,dt);
+    const dShare=W>0? docIn*docWork/(docIn*docWork+imgIn*imgWork||1):0.5;
+    const outW=cr.out/(1+fail*0.5);
+    const dOut=outW*dShare/docWork, iOut=outW*(1-dShare)/imgWork;
+    const errR=(dOut+iOut)*fail*0.2; s.errors+=errR*dt;
+    s.inst=Math.max(p.crMin,Math.min(p.crMax,Math.ceil((cr.out+(s.qCR>0?cap:0)*0.0)/p.crConc)));
+    s.crUtil=cr.util;
+    const cold=p.crMin===0?4:0;
+    const avgJob=dShare*docWork+(1-dShare)*imgWork;
+    s.itemsQ=(s.qCR||0)/Math.max(0.1,avgJob);
+    s.itemsProc=Math.min(cap,cr.out)/Math.max(0.1,avgJob)*avgJob/Math.max(0.1,avgJob);
+    // chunks
+    const tokPage=500, eff=p.chunkTok*(1-p.overlap/100);
+    s.chunksPerDoc=Math.ceil(p.pages*tokPage/eff);
+    const chunks=(dOut*(1-fail*0.2))*s.chunksPerDoc+(iOut*(1-fail*0.2))*2;
+    s.chunkRate=chunks;
+    const embCap=p.quota?0:p.embRPM/60*p.embBatch;
+    const v=Q(s,'qV',chunks,embCap,dt); s.embUtil=v.util;
+    const pgCap=p.pgVcpu*300, vsCap=2000;
+    let pgOut=0,vsOut=0,pgW=0,vsW=0;
+    if(p.vdest!=='vs'){ const a=Q(s,'qPG',v.out,pgCap,dt); pgOut=a.out; pgW=a.wait; } else s.qPG=0;
+    if(p.vdest!=='pg'){ const b=Q(s,'qVS',v.out,vsCap,dt); vsOut=b.out; vsW=b.wait; } else s.qVS=0;
+    s.idxPG+=pgOut*dt; s.idxVS+=vsOut*dt;
+    const written=p.vdest==='both'?Math.min(pgOut,vsOut):p.vdest==='pg'?pgOut:vsOut;
+    s.indexed+=written/Math.max(1,(chunks>0?chunks/(dOut+iOut||1):s.chunksPerDoc))*dt;
+    s.desync=p.vdest==='both'?Math.abs(s.idxPG-s.idxVS):0;
+    s.ttS=cold+cr.wait+avgJob+2+v.wait+Math.max(pgW,vsW)+(s.bfDocs>0?s.bfDocs/8:0);
+    s.qVv=s.qV||0;
+    // RAG
+    const qps=p.ragQPM/60;
+    const M=p.model==='pro'?{ttft:1.1,tps:80,inS:30000}:{ttft:0.35,tps:200,inS:90000};
+    const tin=400+p.topK*p.chunkTok;
+    s.ragLat=0.1+0.08+0.35+(p.vdest==='pg'?0.05+p.topK*0.006:0)+M.ttft+tin/M.inS+350/M.tps;
+    s.ragP95=s.ragLat*1.45+(p.crMin===0?0.8:0);
+    s.cover=s.arrived>0? clamp(1-(s.itemsQ+s.qVv/Math.max(1,s.chunksPerDoc))/Math.max(1,s.arrived),0,1):1;
+    // costos
+    const H=730, sec=2.628e6, c={};
+    c['Cloud Run (agentes)']=Math.max(cr.out,p.crMin*p.crConc*0.2)*sec/3600*p.crVcpuH+p.crMin*H*p.crVcpuH*0.5;
+    c['Análisis de imágenes']=iOut*sec*p.imgAn;
+    c['Embeddings']=v.out*sec/1000*p.embK;
+    c['Vector Search']=p.vdest!=='pg'?2*H*p.vsNodeH:0;
+    c['Cloud SQL pgvector']=p.vdest!=='vs'?p.pgVcpu*H*0.05:0;
+    c['Gemini (RAG)']=qps*sec*(tin*0.3+350*2.5)/1e6*(p.model==='pro'?4:1);
+    c['Cloud Storage']=(imgIn*p.imgMB+docIn*2)*sec/1000*12*0.02;
+    s.costs=c; s.cost=Object.values(c).reduce((a,b)=>a+b,0);
+    // diagrama
+    const N=s.N={},E=s.E={},X=s.X={};
+    const lvl=(u,w)=> u>1.02||w>1800?'crit':u>0.85||w>120?'warn':'ok';
+    N.users={u:0.3,st:'ok',v:NF1.format((docIn)*3600)+' doc/h · '+fN(imgIn*3600)+' img/h'};
+    N.lb={u:0.3,st:'ok',v:NF1.format(docIn+imgIn+qps)+' req/s'};
+    N.upl={u:clamp(s.bfDocs/20000,0,1),st:s.bfDocs>0?'warn':'ok',v:s.bfDocs>0?'en cola '+fN(s.bfDocs)+' doc':NF1.format((imgIn*p.imgMB+docIn*2))+' MB/s',b:s.bfDocs>0?'📚':''};
+    N.cr={u:cr.util,st:lvl(cr.util,cr.wait),v:s.inst+'/'+p.crMax+' inst. · cola '+fN(s.itemsQ)+' arch.',b:cr.util>1?'⚠ saturado':(p.crMin===0?'❄':'')};
+    N.dag={u:cr.util*dShare*1.2,st:lvl(cr.util,cr.wait),v:NF1.format(dOut*3600)+' doc/h'};
+    N.iag={u:cr.util*(1-dShare)*1.2,st:lvl(cr.util,cr.wait),v:fN(iOut*3600)+' img/h'};
+    N.stg={u:0.3,st:'ok',v:NF1.format(dOut+iOut)+' arch/s'};
+    N.ext={u:0.2,st:'ok',v:p.ext+' msg/s'};
+    N.psq={u:0.3,st:'ok',v:NF1.format(qps+p.ext)+' msg/s'};
+    N.fst={u:0.3,st:'ok',v:fN((dOut+iOut)*3)+' cambios de estado/s'};
+    N.psv={u:clamp(v.wait/600,0,1.1),st:lvl(0,v.wait),v:'cola '+fN(s.qV)+' fragmentos',b:p.quota?'⚠':''};
+    N.pdl={u:0.3,st:'ok',v:'texto + descripciones'};
+    N.vag={u:v.util,st:p.quota?'crit':lvl(v.util,v.wait),v:fN(chunks)+' frag/s · '+s.chunksPerDoc+' por doc'};
+    N.emb={u:p.quota?1.2:v.util,st:p.quota?'crit':lvl(v.util,v.wait),v:p.quota?'429 cuota agotada':fN(v.out)+' / '+fN(embCap)+' textos/s',b:p.quota?'✕ 429':''};
+    N.pg=p.vdest==='vs'?{u:0,st:'off',v:'no se usa'}:{u:clamp(v.out/pgCap,0,1.2),st:lvl(v.out/pgCap,pgW),v:fN(s.idxPG)+' vectores'};
+    N.vsx=p.vdest==='pg'?{u:0,st:'off',v:'no se usa'}:{u:clamp(v.out/vsCap,0,1.2),st:lvl(v.out/vsCap,vsW),v:fN(s.idxVS)+' vectores'};
+    N.app={u:clamp(qps/20,0,1),st:'ok',v:NF1.format(qps)+' preguntas/s'};
+    N.vse=p.vdest==='pg'?{u:0,st:'off',v:'índice no disponible'}:{u:0.3,st:'ok',v:'top-k '+p.topK};
+    N.gem={u:0.3,st:'ok',v:fT(s.ragLat)+' · '+fN(tin)+' tok',s:p.model==='pro'?'Gemini Pro':'Gemini Flash'};
+    N.fsq={u:0.2,st:'ok',v:'historial y caché'};
+    N.adl={u:0.3,st:'ok',v:'Parquet procesado'};N.blk={u:0.2,st:'ok',v:'tablas externas'};N.bq={u:0.3,st:'ok',v:'métricas de proceso'};
+    N.lks={u:0.2,st:'ok',v:'tableros'};N.dmk={u:0.1,st:'ok',v:'datasets publicados'};
+    E.b1=docIn+imgIn;E.b2=docIn+imgIn;E.b3=docIn+imgIn;E.b4=dOut;E.b5=iOut;E.b6=dOut;E.b7=iOut;E.b8=dOut+iOut;E.b9=(dOut+iOut)*3;
+    E.b10=dOut+iOut;E.b11=chunks;E.b12=v.out;E.b13=pgOut;E.b14=vsOut;E.b15=qps;E.b16=p.ext;E.b17=qps+p.ext;E.b18=p.vdest==='pg'?0:qps;
+    E.b19=p.vdest==='pg'?0:qps;E.b20=p.vdest==='pg'?qps:0;E.b21=qps;E.b22=qps;E.b23=dOut+iOut;E.b24=0.5;E.b25=0.5;E.b26=0.3;E.b27=0.05;E.b28=qps;
+    if(p.vdest==='vs'){X.b13='off';X.b20='off';} if(p.vdest==='pg'){X.b14='off';X.b18='off';X.b19='off';} else X.b20='off';
+    if(p.quota) X.b12='invalid';
+    flag(s,'quota',p.quota,'crit','Embeddings responde 429: los documentos se procesan pero no se vuelven consultables.','Se restableció la cuota de embeddings.');
+    flag(s,'crsat',cr.util>1,'warn','Cloud Run llegó al máximo de instancias: los archivos esperan.','Cloud Run se puso al día.');
+    flag(s,'desync',s.desync>1000,'warn','Los dos índices vectoriales ya difieren en más de 1.000 vectores.',null);
+  },
+  sample(s){return {ttS:Math.min(s.ttS/60,1440),itemsQ:s.itemsQ,qV:s.qVv,inst:s.inst};},
+  kpis:[
+    {l:'Llegadas',v:s=>fN((s.docIn+s.imgIn)*3600)+' arch/h',sub:s=>NF1.format(s.docIn*3600)+' docs · '+fN(s.imgIn*3600)+' imágenes'},
+    {l:'Instancias Cloud Run',v:(s,p)=>s.inst+' / '+p.crMax,sub:s=>'utilización '+NF.format(Math.min(s.crUtil,1.2)*100)+' %',st:s=>s.crUtil>1?'crit':s.crUtil>0.85?'warn':'ok'},
+    {l:'Archivos en espera',v:s=>fN(s.itemsQ+s.bfDocs),sub:()=>'antes de los agentes',st:s=>(s.itemsQ+s.bfDocs)>2000?'crit':(s.itemsQ+s.bfDocs)>100?'warn':'ok'},
+    {l:'Fragmentos por vectorizar',v:s=>fN(s.qVv),sub:s=>s.chunksPerDoc+' fragmentos por documento',st:s=>s.qVv>50000?'crit':s.qVv>5000?'warn':'ok'},
+    {l:'Tiempo hasta ser consultable',v:s=>fT(s.ttS),sub:()=>'subida → indexado',st:s=>s.ttS>3600?'crit':s.ttS>600?'warn':'ok'},
+    {l:'Vectores indexados',v:(s,p)=>fN(p.vdest==='pg'?s.idxPG:s.idxVS),sub:(s,p)=>p.vdest==='both'?'pgvector '+fN(s.idxPG)+' · VS '+fN(s.idxVS):(p.vdest==='pg'?'solo pgvector':'solo Vector Search')},
+    {l:'Desincronización de índices',v:(s,p)=>p.vdest==='both'?fN(s.desync)+' vect.':'—',sub:(s,p)=>p.vdest==='both'?'en un índice y no en el otro':'un solo índice',st:(s,p)=>p.vdest!=='both'?'ok':s.desync>1000?'warn':'ok'},
+    {l:'Respuesta RAG (p95)',v:s=>fT(s.ragP95),sub:(s,p)=>'top-k '+p.topK+' · '+(p.model==='pro'?'Pro':'Flash'),st:s=>s.ragP95>8?'warn':'ok'},
+    {l:'Archivos con error',v:s=>fN(s.errors),sub:()=>'tras reintentos'},
+    {l:'Costo mensual estimado',v:s=>fUSD(s.cost),sub:()=>'precios ilustrativos editables'}
+  ],
+  charts:[
+    {t:'Tiempo hasta ser consultable',u:'minutos',k:[['ttS','Subida → indexado','--s1']],f:v=>NF1.format(v)+' min'},
+    {t:'Archivos en cola de procesamiento',u:'archivos',k:[['itemsQ','En cola','--s1']],f:fN},
+    {t:'Fragmentos en cola de vectorización',u:'fragmentos',k:[['qV','En cola','--s1']],f:fN},
+    {t:'Instancias de Cloud Run en uso',u:'instancias',k:[['inst','En uso','--s1']],f:fN}
+  ],
+  insights(s,p){
+    const o=[];
+    if(p.quota) o.push(['crit','Procesado no es lo mismo que consultable','Los agentes siguen trabajando y Firestore marca los archivos como "listos para vectorizar", pero la cola de Pub/Sub crece: el asistente no puede usar esos documentos. Pub/Sub los guarda hasta que vuelva la cuota.']);
+    if(s.crUtil>1) o.push(['warn','Cloud Run al máximo','Capacidad = '+p.crMax+' instancias × '+p.crConc+' trabajos. Sube el máximo o la concurrencia (si el agente lo tolera).']);
+    if(p.vdest==='both') o.push(['warn','Doble escritura vectorial','Cada vector se escribe en pgvector y en Vector Search. Si uno es más lento o falla, los índices divergen y la misma pregunta puede responder distinto según cuál consulte la aplicación.']);
+    else o.push(['ok','Un solo índice','No hay riesgo de desincronización. '+(p.vdest==='pg'?'pgvector permite cruzar vectores con datos relacionales (turbina, fecha).':'Vector Search escala mejor a millones de vectores.')]);
+    if(p.chunkTok<250) o.push(['info','Fragmentos pequeños','Cada documento genera '+s.chunksPerDoc+' fragmentos: más embeddings, más cuota y más costo. La búsqueda es más precisa, pero cada fragmento lleva poco contexto.']);
+    if(p.chunkTok>1500) o.push(['info','Fragmentos grandes','Pocos embeddings, pero cada uno mezcla temas distintos y la búsqueda pierde precisión; además cada fragmento recuperado ocupa muchos tokens en Gemini.']);
+    if(p.crMin===0) o.push(['info','Arranques en frío','Con 0 instancias mínimas, los primeros trabajos tras un periodo inactivo esperan unos segundos. Barato, pero suma latencia.']);
+    if(s.bfDocs>0) o.push(['info','Carga histórica en curso','Quedan '+fN(s.bfDocs)+' documentos. Conviene hacerla de noche o con una cola de menor prioridad para no atrasar los documentos del día.']);
+    o.push(['info','Correcciones de la versión 2','AWS reemplazado por Cloud Storage (Data Market y Analytics Data Lake), segundo bucket renombrado a Staging, PaLM → Gemini y etiquetas corregidas. Haz clic en los nodos con borde punteado de nota para ver cada una.']);
+    return o;
+  },
+  extra(s,p,box){
+    const st=[['Subido (en cola)',s.itemsQ+s.bfDocs,'--s4'],['Procesando',Math.min(p.crMax*p.crConc,s.crUtil*p.crMax*p.crConc),'--s1'],['Listo para vectorizar',s.qVv/Math.max(1,s.chunksPerDoc),'--s7'],['Indexado',s.indexed,'--s3'],['Error',s.errors,'--s8']];
+    const tot=st.reduce((a,b)=>a+Math.max(0,b[1]),0)||1;
+    box.innerHTML='<h4>Estados en Firestore</h4><div class="states">'+st.map(x=>`<div title="${x[0]}: ${fN(x[1])}" style="flex-grow:${Math.max(0,x[1])/tot};background:var(${x[2]})"></div>`).join('')+'</div><div class="stlg">'+st.map(x=>`<span><i style="background:var(${x[2]})"></i>${x[0]} <b>${fN(x[1])}</b></span>`).join('')+'</div><div style="height:10px"></div>';
+    const c=el('div'); box.appendChild(c); costBars(c,s.costs);
+  }
+};
+
+function costBars(box,costs){
+  const ent=Object.entries(costs).sort((a,b)=>b[1]-a[1]); const max=Math.max(1,...ent.map(e=>e[1]));
+  box.innerHTML+='<h4>Desglose del costo mensual</h4><div class="costs">'+ent.map(([k,v])=>`<div class="cr"><span>${k}</span><span class="cb"><i style="width:${(v/max*100).toFixed(1)}%"></i></span><span>${fUSD(v)}</span></div>`).join('')+'</div><p style="font-size:11px;color:var(--muted);margin:6px 0 0">Proyección a un mes si se mantuvieran las condiciones de este instante, con precios editables; no es una cotización. Verifica con la calculadora de Google Cloud.</p>';
+}
+
+/* ============================================================
+   Motor de UI y simulación
+   ============================================================ */
+const SIMS=[SIM1,SIM2,SIM3];
+const RUN={};
+let speed=10, playing=true, active='guia';
+
+function defaults(def){ const p={}; def.controls.forEach(g=>g.items.forEach(i=>{ if(i.type!=='button') p[i.id]=i.value; })); return p; }
+function newState(def,p){
+  const s={t:0,N:{},E:{},X:{},flags:{},hist:[],logs:[],costs:{}};
+  s.log=(lvl,msg)=>{ s.logs.unshift({t:s.t,lvl,msg}); if(s.logs.length>80) s.logs.pop(); };
+  def.init(s,p); def.step(s,p,0.5); if(def.warm){ def.warm(s,p); def.step(s,p,0.5); } s.logs.length=0; s.flags={}; return s;
+}
+
+function build(def){
+  const root=document.getElementById('v-'+def.id);
+  const r=RUN[def.id]={def,p:defaults(def),root,inputs:{},sel:null,lastSample:-1e9,acc:0};
+  r.s=newState(def,r.p);
+  root.innerHTML='';
+  const wrap=el('div',{class:'sim'}); root.appendChild(wrap);
+  // Controles
+  const ctr=el('aside',{class:'panel controls'}); wrap.appendChild(ctr);
+  ctr.appendChild(el('h3',{},'Escenarios'));
+  const ps=el('select',{class:'preset'}); def.presets.forEach((pr,i)=>ps.appendChild(el('option',{value:i},pr.n))); ctr.appendChild(ps);
+  const pd=el('div',{class:'presetdesc'},def.presets[0].d); ctr.appendChild(pd);
+  const pb=el('div',{class:'btnrow'}); const ap=el('button',{class:'primary'},'Aplicar escenario'); pb.appendChild(ap); ctr.appendChild(pb);
+  ps.onchange=()=>{pd.textContent=def.presets[ps.value].d;};
+  ap.onclick=()=>applyPreset(def.id,+ps.value);
+  ctr.appendChild(el('h3',{},'Eventos para inyectar'));
+  const eb=el('div',{class:'btnrow'}); def.events.forEach(ev=>{ const b=el('button',{title:ev.help},ev.label); b.onclick=()=>{def.onEvent(ev.id,r.s,r.p);}; eb.appendChild(b); }); ctr.appendChild(eb);
+  ctr.appendChild(el('h3',{},'Variables y decisiones'));
+  def.controls.forEach(g=>{
+    const d=el('details',{class:'grp'}); if(g.open) d.open=true; d.appendChild(el('summary',{},g.g));
+    g.items.forEach(it=>d.appendChild(control(r,it))); ctr.appendChild(d);
+  });
+  // Principal
+  const main=el('div'); wrap.appendChild(main);
+  const dp=el('div',{class:'panel diagwrap'}); main.appendChild(dp);
+  dp.appendChild(el('div',{class:'dtitle'},`<b>${def.title}</b><span>${def.subtitle} · haz clic en un componente para ver qué hace</span>`));
+  const svg=svgEl('svg',{viewBox:`0 0 ${def.vb[0]} ${def.vb[1]}`,role:'img','aria-label':def.title}); dp.appendChild(svg);
+  const kinds=[...new Set(def.edges.map(e=>e.k))];
+  dp.appendChild(el('div',{class:'legend'},kinds.map(k=>`<span><i style="background:var(${KIND_COLOR[k]})"></i>${KIND_NAME[k]}</span>`).join('')+
+    `<span class="st"><i style="background:var(--ok)"></i>holgado</span><span class="st"><i style="background:var(--warn)"></i>⚠ exigido</span><span class="st"><i style="background:var(--crit)"></i>✕ saturado o inválido</span><span>— — apagado / no usado</span>`));
+  buildSVG(r,svg);
+  const kp=el('div',{class:'kpis'}); main.appendChild(kp); r.kpiEls=def.kpis.map(k=>{ const d=el('div',{class:'kpi'},`<div class="kl"><span>${k.l}</span><span class="chip"></span></div><div class="kv"></div><div class="ks"></div>`); kp.appendChild(d); return d; });
+  const ch=el('div',{class:'charts'}); main.appendChild(ch);
+  r.charts=def.charts.map(c=>{ const d=el('div',{class:'panel chart'}); d.innerHTML=`<div class="ct">${c.t}<span>${c.u}</span></div>`+(c.k.length>1?`<div class="lg">${c.k.map(k=>`<span><i style="background:var(${k[2]})"></i>${k[1]}</span>`).join('')}</div>`:'');
+    const cv=el('canvas'); d.appendChild(cv); const tip=el('div',{class:'tip'}); d.appendChild(tip); ch.appendChild(d);
+    const o={c,cv,tip,hx:null}; cv.addEventListener('mousemove',e=>{o.hx=e.offsetX;}); cv.addEventListener('mouseleave',()=>{o.hx=null;tip.style.display='none';}); return o; });
+  const bt=el('div',{class:'bottom'}); main.appendChild(bt);
+  r.insEl=el('div',{class:'panel'}); bt.appendChild(r.insEl);
+  const mid=el('div',{class:'panel'}); bt.appendChild(mid); r.infoEl=el('div',{class:'info'}); mid.appendChild(r.infoEl); r.extraEl=el('div'); mid.appendChild(r.extraEl);
+  const lg=el('div',{class:'panel'}); bt.appendChild(lg); lg.appendChild(el('h4',{},'Bitácora de eventos')); r.logEl=el('div',{class:'log'}); lg.appendChild(r.logEl);
+  showInfo(r,null);
+}
+
+function control(r,it){
+  const p=r.p;
+  const d=el('div',{class:'ctl'+(it.type==='toggle'?' tog':'')});
+  const hlp=it.help?`<span class="h" title="${it.help.replace(/"/g,'&quot;')}">?</span>`:'';
+  if(it.type==='range'){
+    d.innerHTML=`<div class="lab"><span>${it.label}</span>${hlp}</div><div class="row"><input type="range" min="${it.min}" max="${it.max}" step="${it.step}" value="${it.value}"><input type="number" min="${it.min}" max="${it.max}" step="${it.step}" value="${it.value}"><span class="unit">${it.unit||''}</span></div>`+(it.help?`<div class="help">${it.help}</div>`:'');
+    const [rg,nm]=d.querySelectorAll('input');
+    rg.oninput=()=>{nm.value=rg.value;p[it.id]=+rg.value;};
+    nm.onchange=()=>{let v=clamp(+nm.value,it.min,it.max); if(!isFinite(v)) v=it.value; nm.value=v; rg.value=v; p[it.id]=v;};
+    r.inputs[it.id]=v=>{rg.value=v;nm.value=v;};
+  } else if(it.type==='select'){
+    d.innerHTML=`<div class="lab"><span>${it.label}</span>${hlp}</div><select>${it.options.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')}</select>`+(it.help?`<div class="help">${it.help}</div>`:'');
+    const s=d.querySelector('select'); s.value=it.value; s.onchange=()=>{p[it.id]=s.value;}; r.inputs[it.id]=v=>{s.value=v;};
+  } else if(it.type==='toggle'){
+    d.innerHTML=`<label class="lab"><span>${it.label}</span><span style="display:flex;gap:6px;align-items:center">${hlp}<input type="checkbox"${it.value?' checked':''}></span></label>`+(it.help?`<div class="help">${it.help}</div>`:'');
+    const c=d.querySelector('input'); c.onchange=()=>{p[it.id]=c.checked;}; r.inputs[it.id]=v=>{c.checked=!!v;};
+  }
+  const h=d.querySelector('.h'); if(h) h.onclick=e=>{e.preventDefault();d.classList.toggle('showhelp');};
+  return d;
+}
+
+function applyPreset(id,i,keepState){
+  const r=RUN[id]; const def=r.def; const pr=def.presets[i];
+  const p=defaults(def); Object.assign(p,pr.set); Object.keys(p).forEach(k=>{ r.p[k]=p[k]; if(r.inputs[k]) r.inputs[k](p[k]); });
+  if(keepState===false){ r.s=newState(def,r.p); r.lastSample=-1e9; }
+  r.s.log('info','Escenario aplicado: '+pr.n+'.');
+}
+
+/* --- SVG --- */
+function anchor(n,side){ const w=n.w||140,h=n.h||56;
+  return side==='l'?[n.x,n.y+h/2]:side==='r'?[n.x+w,n.y+h/2]:side==='t'?[n.x+w/2,n.y]:[n.x+w/2,n.y+h]; }
+function edgePath(a,b,bend){
+  const ac=[a.x+(a.w||140)/2,a.y+(a.h||56)/2], bc=[b.x+(b.w||140)/2,b.y+(b.h||56)/2];
+  let sa,sb,horiz;
+  if(bend==='right'){ const p1=anchor(a,'r'),p2=anchor(b,'r'); const o=40; return `M${p1} C${p1[0]+o},${p1[1]} ${p2[0]+o},${p2[1]} ${p2}`; }
+  if(bend==='bottom'){ const p1=anchor(a,'b'),p2=anchor(b,'b'); const o=34; return `M${p1} C${p1[0]},${p1[1]+o} ${p2[0]},${p2[1]+o} ${p2}`; }
+  if(bend==='top2'){ const p1=anchor(a,'t'),p2=anchor(b,'b'); return `M${p1} C${p1[0]},${p1[1]-60} ${p2[0]},${p2[1]+60} ${p2}`; }
+  const dx=bc[0]-ac[0], dy=bc[1]-ac[1];
+  if(Math.abs(dx)>Math.abs(dy)*0.9){ horiz=true; sa=dx>0?'r':'l'; sb=dx>0?'l':'r'; } else { horiz=false; sa=dy>0?'b':'t'; sb=dy>0?'t':'b'; }
+  const p1=anchor(a,sa),p2=anchor(b,sb);
+  const k=horiz? Math.max(20,Math.abs(p2[0]-p1[0])/2) : Math.max(16,Math.abs(p2[1]-p1[1])/2);
+  const c1=horiz?[p1[0]+(sa==='r'?k:-k),p1[1]]:[p1[0],p1[1]+(sa==='b'?k:-k)];
+  const c2=horiz?[p2[0]+(sb==='r'?k:-k),p2[1]]:[p2[0],p2[1]+(sb==='b'?k:-k)];
+  return `M${p1} C${c1} ${c2} ${p2}`;
+}
+function buildSVG(r,svg){
+  const def=r.def; const byId={}; def.nodes.forEach(n=>byId[n.id]=n);
+  const gz=svgEl('g'); svg.appendChild(gz);
+  def.zones.forEach(z=>{ const g=svgEl('g',{class:'zone'}); g.appendChild(svgEl('rect',{x:z.x,y:z.y,width:z.w,height:z.h,rx:10,fill:`var(${z.c})`})); const t=svgEl('text',{x:z.x+10,y:z.y+16}); t.textContent=z.t; g.appendChild(t); gz.appendChild(g); });
+  const ge=svgEl('g'); svg.appendChild(ge);
+  r.edgeEls={};
+  def.edges.forEach(e=>{ const d=edgePath(byId[e.f],byId[e.t],e.bend); const p=svgEl('path',{d,class:'edge k-'+e.k,'stroke-width':1.5}); const tt=svgEl('title'); p.appendChild(tt); ge.appendChild(p);
+    const len=p.getTotalLength? p.getTotalLength():100; const mid=p.getPointAtLength? p.getPointAtLength(len/2):{x:0,y:0};
+    const x=svgEl('text',{x:mid.x-5,y:mid.y+6,class:'xmark',display:'none'}); x.textContent='✕'; ge.appendChild(x);
+    r.edgeEls[e.id]={e,p,tt,len,x,acc:Math.random()}; });
+  r.ptG=svgEl('g'); svg.appendChild(r.ptG); r.parts=[];
+  const gn=svgEl('g'); svg.appendChild(gn); r.nodeEls={};
+  def.nodes.forEach(n=>{ const w=n.w||140,h=n.h||56;
+    const g=svgEl('g',{class:'node',transform:`translate(${n.x},${n.y})`,tabindex:0});
+    g.appendChild(svgEl('rect',{class:'nb',width:w,height:h,rx:8}));
+    if(n.fix) g.appendChild(svgEl('rect',{x:w-12,y:4,width:8,height:8,rx:2,fill:'none',stroke:'var(--accent)','stroke-dasharray':'2 1.5'}));
+    const l=svgEl('text',{class:'nl',x:9,y:17}); l.textContent=n.l; g.appendChild(l);
+    const s=svgEl('text',{class:'ns',x:9,y:30}); s.textContent=n.s; g.appendChild(s);
+    const v=svgEl('text',{class:'nv',x:9,y:h-14}); g.appendChild(v);
+    g.appendChild(svgEl('rect',{class:'bbg',x:9,y:h-8,width:w-18,height:3,rx:1.5}));
+    const bar=svgEl('rect',{class:'bar',x:9,y:h-8,width:0,height:3,rx:1.5}); g.appendChild(bar);
+    const b=svgEl('text',{class:'bdg',x:w-2,y:-4,'text-anchor':'end'}); g.appendChild(b);
+    const ti=svgEl('title'); g.appendChild(ti);
+    g.addEventListener('click',()=>{showInfo(r,n);}); g.addEventListener('keydown',e=>{if(e.key==='Enter')showInfo(r,n);});
+    gn.appendChild(g); r.nodeEls[n.id]={n,g,s,v,bar,b,ti,w}; });
+}
+function showInfo(r,n){
+  r.sel=n; Object.values(r.nodeEls).forEach(o=>o.g.classList.toggle('sel',o.n===n));
+  if(!n){ r.infoEl.innerHTML='<h4>Detalle del componente</h4><p>Haz clic en un componente del diagrama para ver qué hace, qué variables lo afectan y qué corrección se le aplicó (los que tienen un pequeño cuadro punteado en la esquina traen corrección).</p>'; return; }
+  r.infoEl.innerHTML=`<h4>Detalle del componente</h4><h5>${n.l}</h5><p>${n.info}</p>`+(n.fix?`<div class="fix"><b>Corrección incorporada.</b> ${n.fix}</div>`:'')+'<p class="live" style="margin-top:8px;color:var(--text)"></p>';
+}
+function renderSVG(r,dtR){
+  const s=r.s;
+  for(const id in r.nodeEls){ const o=r.nodeEls[id], d=s.N[id]||{u:0,st:'ok',v:''};
+    o.g.setAttribute('class','node '+(d.st||'ok')+(r.sel===o.n?' sel':''));
+    o.bar.setAttribute('width',(o.w-18)*clamp(d.u||0,0,1));
+    if(o.v.textContent!==(d.v||'')){ o.v.textContent=d.v||''; o.v.removeAttribute('textLength'); o.v.removeAttribute('lengthAdjust'); const L=o.v.getComputedTextLength?o.v.getComputedTextLength():0; if(L>o.w-16){ o.v.setAttribute('textLength',o.w-16); o.v.setAttribute('lengthAdjust','spacingAndGlyphs'); } }
+    o.b.textContent=d.b||''; if(d.s!=null&&o.s.textContent!==d.s){ o.s.textContent=d.s; } o.ti.textContent=o.n.l+(d.v?' · '+d.v:'');
+  }
+  if(r.sel){ const lv=r.infoEl.querySelector('.live'); const d=s.N[r.sel.id]; if(lv&&d) lv.textContent='Ahora: '+(d.v||'—'); }
+  for(const id in r.edgeEls){ const o=r.edgeEls[id], rate=s.E[id]||0, x=s.X[id];
+    let cls='edge k-'+o.e.k; if(x==='invalid') cls+=' invalid'; else if(x==='off') cls+=' off'; else if(x==='idle'||rate<=0.0001) cls+=' idle';
+    o.p.setAttribute('class',cls); o.p.setAttribute('stroke-width',x?1.6:(1.2+Math.min(4,0.8*Math.log10(1+rate))).toFixed(2));
+    o.x.setAttribute('display',x==='invalid'?'inline':'none');
+    o.tt.textContent=KIND_NAME[o.e.k]+': '+(x==='invalid'?'flujo inválido o cortado':x==='off'?'no se usa en esta configuración':fN(rate)+' por segundo');
+    if(!x && rate>0.0001 && playing){ const sp=Math.min(9,0.5+1.5*Math.log10(1+rate*3)); o.acc+=dtR*sp; while(o.acc>=1){ o.acc-=1; spawn(r,o); } }
+  }
+  for(let i=r.parts.length-1;i>=0;i--){ const pt=r.parts[i]; if(playing) pt.t+=dtR/pt.dur; if(pt.t>=1){ pt.c.remove(); r.parts.splice(i,1); continue; }
+    const q=pt.o.p.getPointAtLength(pt.t*pt.o.len); pt.c.setAttribute('cx',q.x.toFixed(1)); pt.c.setAttribute('cy',q.y.toFixed(1)); }
+}
+function spawn(r,o){ if(r.parts.length>650) return; const c=svgEl('circle',{r:2.6,class:'pt',fill:`var(${KIND_COLOR[o.e.k]})`}); r.ptG.appendChild(c); r.parts.push({o,c,t:0,dur:Math.max(0.9,o.len/170)}); }
+
+/* --- KPIs, gráficos, paneles --- */
+function renderPanels(r){
+  const s=r.s,p=r.p,def=r.def;
+  def.kpis.forEach((k,i)=>{ const d=r.kpiEls[i]; d.querySelector('.kv').textContent=k.v(s,p); d.querySelector('.ks').textContent=k.sub?k.sub(s,p):'';
+    const c=d.querySelector('.chip'); const st=k.st?k.st(s,p):null; c.className='chip'+(st?' '+st:''); c.textContent=st?({ok:'● OK',warn:'⚠ atención',crit:'✕ crítico'})[st]:''; });
+  const ins=def.insights(s,p);
+  r.insEl.innerHTML='<h4>Qué está pasando y por qué</h4>'+ins.map(([l,t,x])=>`<div class="ins ${l}"><b class="tag">${({ok:'● Bien',warn:'⚠ Atención',crit:'✕ Problema',info:'ⓘ Para entender'})[l]}</b><b>${t}.</b> ${x||''}</div>`).join('');
+  r.logEl.innerHTML=s.logs.map(l=>`<div><time>${clockTxt(l.t)}</time><span class="${l.lvl}">${l.msg}</span></div>`).join('')||'<div><span>Sin eventos todavía.</span></div>';
+  r.extraEl.innerHTML=''; def.extra(s,p,r.extraEl);
+}
+function clockTxt(t){ const h=Math.floor(t/3600),m=Math.floor(t%3600/60),sc=Math.floor(t%60); return (h?h+':':'')+String(m).padStart(h?2:1,'0')+':'+String(sc).padStart(2,'0'); }
+function drawCharts(r){
+  const s=r.s; const W0=clamp(speed*60,60,3600); const t0=Math.max(0,s.t-W0); const win=Math.max(60,s.t-t0);
+  const pts=s.hist.filter(h=>h.t>=t0);
+  r.charts.forEach(o=>{
+    const cv=o.cv, dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight; if(!W) return;
+    if(cv.width!==Math.round(W*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+    const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+    const L=52,Rm=8,T=6,Bm=18, pw=W-L-Rm, ph=H-T-Bm;
+    let ymax=0; pts.forEach(h=>o.c.k.forEach(k=>{ if(isFinite(h[k[0]])) ymax=Math.max(ymax,h[k[0]]); })); ymax=ymax>0?ymax*1.15:1;
+    const tx=t=>L+(t-t0)/win*pw, ty=v=>T+ph-(v/ymax)*ph;
+    g.font='10.5px system-ui,sans-serif'; g.fillStyle=css('--muted'); g.strokeStyle=css('--line'); g.lineWidth=1;
+    for(let i=0;i<=3;i++){ const v=ymax*i/3, y=ty(v); g.beginPath(); g.moveTo(L,y+0.5); g.lineTo(W-Rm,y+0.5); g.stroke(); g.textAlign='right'; g.fillText(o.c.f(v),L-5,y+3.5); }
+    g.textAlign='center'; const step=win/4; for(let i=0;i<=4;i++){ const t=t0+step*i; if(t<0) continue; g.fillText(clockTxt(t),tx(t),H-4); }
+    o.c.k.forEach(k=>{ g.strokeStyle=css(k[2]); g.lineWidth=2; g.lineJoin='round'; g.beginPath(); let st=false; pts.forEach(h=>{ const v=h[k[0]]; if(!isFinite(v)) return; const x=tx(h.t),y=ty(Math.min(v,ymax)); if(!st){g.moveTo(x,y);st=true;} else g.lineTo(x,y); }); g.stroke(); });
+    if(o.hx!=null && pts.length){ const tt=t0+(o.hx-L)/pw*win; let best=pts[0]; pts.forEach(h=>{ if(Math.abs(h.t-tt)<Math.abs(best.t-tt)) best=h; });
+      const x=tx(best.t); g.strokeStyle=css('--text2'); g.lineWidth=1; g.setLineDash([3,3]); g.beginPath(); g.moveTo(x,T); g.lineTo(x,T+ph); g.stroke(); g.setLineDash([]);
+      o.c.k.forEach(k=>{ const v=best[k[0]]; if(!isFinite(v)) return; g.fillStyle=css(k[2]); g.strokeStyle=css('--surface'); g.lineWidth=2; g.beginPath(); g.arc(x,ty(Math.min(v,ymax)),4,0,7); g.fill(); g.stroke(); });
+      o.tip.style.display='block'; o.tip.innerHTML=`<div style="color:var(--text2)">t = ${clockTxt(best.t)}</div>`+o.c.k.map(k=>`<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(${k[2]});margin-right:5px"></span>${k[1]}: <b>${o.c.f(best[k[0]])}</b></div>`).join('');
+      const left=Math.min(x+12,W-o.tip.offsetWidth-4); o.tip.style.left=(left+10)+'px'; o.tip.style.top='34px'; }
+  });
+}
+
+/* --- Bucle --- */
+let lastT=performance.now(), panelT=0, chartT=0;
+function loop(now){
+  const dtR=Math.min(0.1,(now-lastT)/1000); lastT=now;
+  const r=RUN[active];
+  if(r){
+    if(playing){ let simDt=dtR*speed; const sub=0.5; r.acc+=simDt; let n=0; while(r.acc>=sub&&n<400){ r.s.t+=sub; r.def.step(r.s,r.p,sub); r.acc-=sub; n++;
+        const iv=clamp(speed*60,60,3600)/300; if(r.s.t-r.lastSample>=iv){ r.lastSample=r.s.t; const smp=r.def.sample(r.s); smp.t=r.s.t; r.s.hist.push(smp); if(r.s.hist.length>2500) r.s.hist.splice(0,500);} } }
+    else { r.def.step(r.s,r.p,0.0001); }
+    renderSVG(r,dtR);
+    panelT+=dtR; chartT+=dtR;
+    if(panelT>0.4){ panelT=0; renderPanels(r); document.getElementById('clock').textContent='t = '+clockTxt(r.s.t); }
+    if(chartT>0.2){ chartT=0; drawCharts(r); }
+  }
+  requestAnimationFrame(loop);
+}
+
+/* --- Guía --- */
+function buildGuide(){
+  const g=document.getElementById('v-guia');
+  g.innerHTML=`
+  <h2>Una plataforma, tres esquemas</h2>
+  <p class="lead">Los tres diagramas describen piezas de una misma plataforma de datos para un parque eólico en Google Cloud. El primero mueve la telemetría de las turbinas (≈10.000 mensajes por segundo); el segundo atiende a clientes y empleados a través de un portal con Pub/Sub como eje; el tercero convierte documentos e imágenes de inspección en una base de conocimiento consultable con IA. Este simulador los pone en movimiento con las correcciones que hicimos al revisarlos.</p>
+  <div class="cards">
+    <div class="panel card"><div class="tag">Esquema 1 · pipeline.pdf</div><h3>Telemetría SCADA</h3><ul><li>Pub/Sub absorbe picos y caídas (retiene 7 días).</li><li>Dataflow escala, pero no al instante.</li><li>La clave de Bigtable decide si hay hotspot.</li><li>Partición y vistas materializadas definen costo y latencia en BI.</li><li>La réplica on-premise no puede ser Datastream.</li></ul><button onclick="location.hash='telemetria'">Abrir simulación →</button></div>
+    <div class="panel card"><div class="tag">Esquema 2 · ABO_GCP.pdf</div><h3>Portal y eventos</h3><ul><li>Un evento, tres suscriptores independientes.</li><li>RabbitMQ y Pub/Sub con roles distintos.</li><li>Réplica a legados: atraso, reenvíos e idempotencia.</li><li>RAG: recuperación, cuota de Gemini, caché y calidad.</li></ul><button onclick="location.hash='portal'">Abrir simulación →</button></div>
+    <div class="panel card"><div class="tag">Esquema 3 · ABO_Energy_GCP v2</div><h3>Documentos, imágenes y RAG</h3><ul><li>Agentes en Cloud Run: instancias × concurrencia.</li><li>Firestore como máquina de estados.</li><li>Chunking y cuota de embeddings.</li><li>Uno o dos índices vectoriales: costo de sincronizar.</li></ul><button onclick="location.hash='documentos'">Abrir simulación →</button></div>
+  </div>
+  <h2 style="font-size:17px">Correcciones incorporadas al modelo</h2>
+  <table class="fixes"><thead><tr><th>Esquema</th><th>En el diagrama original</th><th>En el simulador</th></tr></thead><tbody>
+    <tr><td>1</td><td>Datastream lee de BigQuery y escribe en SQL Server/Oracle on-premise.</td><td>Job programado (Dataflow/BQ → JDBC) o herramienta de terceros (Striim, Fivetran). La opción original se puede elegir y se marca como inválida.</td></tr>
+    <tr><td>1</td><td>"Sustituto: Sub-streaming" en el topic de telemetría.</td><td>Se omite: no es un término de Pub/Sub.</td></tr>
+    <tr><td>1</td><td>Clave de Bigtable <code>device_id#timestamp</code> sin análisis de carga.</td><td>Selector de clave (original, timestamp invertido, salting, anti-patrón) y concentración de tráfico.</td></tr>
+    <tr><td>1</td><td>Mensajes inválidos al Dead-letter topic directamente desde la validación AVRO.</td><td>Se aclara: Pub/Sub rechaza al publicar y el gateway desvía; el DLT recibe lo que el suscriptor no logra procesar.</td></tr>
+    <tr><td>2</td><td>RabbitMQ y Pub/Sub sin roles definidos.</td><td>Tres opciones comparables; la corregida asigna trabajo interno a RabbitMQ y eventos de negocio a Pub/Sub.</td></tr>
+    <tr><td>2</td><td>Vertex AI Search y pgvector sin regla de uso.</td><td>Opción "híbrido con regla" (FAQ/metadatos en pgvector, documentos en Vertex AI Search) frente a las demás.</td></tr>
+    <tr><td>2</td><td>"CDC" hacia Oracle e Informix.</td><td>Replicación de eventos, con interruptor de idempotencia para ver el efecto de los reenvíos.</td></tr>
+    <tr><td>2</td><td>Flechas Cloud Storage → GKE y Firestore → Cloud SQL.</td><td>Portal → bucket; se elimina la flecha Firestore → Cloud SQL.</td></tr>
+    <tr><td>3</td><td>Íconos y servicios de AWS (S3 "Data Miacket", S3 Data Lake).</td><td>Cloud Storage (Data Market) y Cloud Storage (Analytics Data Lake).</td></tr>
+    <tr><td>3</td><td>Dos buckets llamados "Upload Bucket".</td><td>Upload Bucket y Staging Bucket.</td></tr>
+    <tr><td>3</td><td>"PaLM/Gemini"; etiquetas cortadas ("Put ssage", "Aequest").</td><td>Vertex AI (Gemini); Put Message, Request; zonas numeradas 1 a 4.</td></tr>
+    <tr><td>3</td><td>Escritura en dos índices vectoriales sin mencionar sincronía.</td><td>Indicador de desincronización y opción de usar un solo índice.</td></tr>
+  </tbody></table>
+  <h2 style="font-size:17px">Ejercicios sugeridos</h2>
+  <div class="ex" id="exs"></div>
+  <p class="note"><b>Cómo leer el simulador.</b> Es un modelo de colas: cada componente tiene una capacidad y, si recibe más de lo que puede procesar, acumula una cola que se traduce en espera. Las cifras de capacidad, latencia y precio son aproximaciones didácticas y editables, no mediciones de Google Cloud. El tiempo avanza a la velocidad elegida arriba; solo corre la pestaña abierta. Los puntos que viajan por las flechas son una representación visual del flujo (más puntos y flechas más gruesas = más volumen, en escala logarítmica), no mensajes individuales.</p>`;
+  const ex=[
+    ['telemetria',0,'¿Qué pasa si Dataflow se cae 10 minutos?','Activa "Simular caída de Dataflow" con velocidad 60×, espera 10 minutos simulados y desactívalo.','¿Se perdió algún mensaje? ¿Cuánto tarda el backlog en drenar y qué hace el autoscaling?'],
+    ['telemetria',3,'Hotspot en Bigtable','Aplica el escenario y luego cambia la clave a salting. Prueba también agregar nodos sin cambiar la clave.','¿Por qué agregar nodos casi no ayuda con la clave original?'],
+    ['telemetria',4,'El problema de Datastream','Aplica el escenario "Diseño original" y mira la antigüedad on-premise y la frescura de Power BI.','Cambia a "Job programado" e "Intervalo 15 min": ¿qué ganas y qué pagas?'],
+    ['telemetria',1,'Tormenta','Viento a 28 m/s: la potencia cae a cero.','¿Por qué la plataforma recibe más datos justo cuando las turbinas no generan?'],
+    ['portal',1,'Diseño original del portal','Compara el escenario original con "Operación normal".','¿Dónde aparece la latencia extra? ¿Qué provoca los duplicados?'],
+    ['portal',2,'Corte de suministro','Aplica el escenario y observa rechazos y p95.','¿Cuál es el cuello de botella? Prueba subir la caché antes que la cuota.'],
+    ['documentos',2,'Procesado no es consultable','Aplica el escenario de cuota agotada y mira los estados en Firestore.','¿Qué ve el usuario del asistente mientras tanto?'],
+    ['documentos',1,'Campaña de drones','Aplica el escenario y luego baja las instancias máximas a 10.','¿Cuánto tarda una foto en ser consultable? ¿Cuánto cuesta acelerar?']
+  ];
+  const box=g.querySelector('#exs');
+  ex.forEach(([tab,pi,t,d,q])=>{ const c=el('div',{class:'panel card'},`<h3>${t}</h3><p>${d}</p><p class="q">${q}</p>`); const b=el('button',{},'Probar →'); b.onclick=()=>{ location.hash=tab; setTimeout(()=>applyPreset(tab,pi),30); }; c.appendChild(b); box.appendChild(c); });
+}
+
+/* --- Navegación --- */
+function route(){
+  let h=(location.hash||'#guia').slice(1); if(!['guia','telemetria','portal','documentos'].includes(h)) h='guia';
+  active=h;
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+h));
+  document.querySelectorAll('#tabs a').forEach(a=>a.classList.toggle('on',a.dataset.v===h));
+  document.getElementById('runbar').style.visibility=h==='guia'?'hidden':'visible';
+  const r=RUN[h]; if(r) document.getElementById('clock').textContent='t = '+clockTxt(r.s.t);
+}
+document.getElementById('play').onclick=e=>{ playing=!playing; e.target.textContent=playing?'❚❚ Pausa':'▶ Reanudar'; e.target.classList.toggle('primary',playing); };
+document.getElementById('speed').onchange=e=>{ speed=+e.target.value; };
+document.getElementById('reset').onclick=()=>{ const r=RUN[active]; if(!r) return; const def=r.def; Object.assign(r.p,defaults(def)); Object.keys(r.p).forEach(k=>r.inputs[k]&&r.inputs[k](r.p[k])); r.s=newState(def,r.p); r.lastSample=-1e9; r.parts.forEach(p=>p.c.remove()); r.parts=[]; };
+window.addEventListener('hashchange',route);
+buildGuide(); SIMS.forEach(build); route(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
